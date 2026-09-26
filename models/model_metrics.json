@@ -1,0 +1,76 @@
+{
+    "model_type": "RandomForestClassifier",
+    "dataset_samples": 48,
+    "num_features": 16,
+    "features": [
+        "fever",
+        "cough",
+        "cold",
+        "headache",
+        "body_pain",
+        "fatigue",
+        "sore_throat",
+        "vomiting",
+        "diarrhea",
+        "abdominal_pain",
+        "dizziness",
+        "chest_pain",
+        "breathing_difficulty",
+        "high_fever",
+        "loss_of_consciousness",
+        "severe_bleeding"
+    ],
+    "classes": [
+        "High Priority",
+        "Low Priority",
+        "Moderate Priority",
+        "Urgent Attention"
+    ],
+    "holdout_test_accuracy": 60.0,
+    "holdout_weighted_f1": 60.0,
+    "holdout_weighted_precision": 60.0,
+    "holdout_weighted_recall": 60.0,
+    "cross_val_accuracy_mean": 75.0,
+    "cross_val_accuracy_std": 13.5,
+    "classification_report": {
+        "High Priority": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1-score": 1.0,
+            "support": 2.0
+        },
+        "Low Priority": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1-score": 0.0,
+            "support": 2.0
+        },
+        "Moderate Priority": {
+            "precision": 0.3333333333333333,
+            "recall": 0.3333333333333333,
+            "f1-score": 0.3333333333333333,
+            "support": 3.0
+        },
+        "Urgent Attention": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1-score": 1.0,
+            "support": 3.0
+        },
+        "accuracy": 0.6,
+        "macro avg": {
+            "precision": 0.5833333333333333,
+            "recall": 0.5833333333333333,
+            "f1-score": 0.5833333333333333,
+            "support": 10.0
+        },
+        "weighted avg": {
+            "precision": 0.6,
+            "recall": 0.6,
+            "f1-score": 0.6,
+            "support": 10.0
+        }
+    },
+    "is_clinically_validated": false,
+    "dataset_type": "Educational Prototype Dataset"
+}
