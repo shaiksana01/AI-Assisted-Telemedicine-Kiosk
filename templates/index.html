@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}AI-Assisted Telemedicine Kiosk - Home{% endblock %}
+
+{% block content %}
+<div class="hero-grid">
+    <div>
+        <div class="hero-title">{{ get_text('hero_title', current_lang) }}</div>
+        <div class="hero-subtitle">{{ get_text('hero_subtitle', current_lang) }}</div>
+        <p class="hero-desc">{{ get_text('hero_desc', current_lang) }}</p>
+
+        <form method="POST" action="{{ url_for('set_language') }}" style="margin-top: 16px;">
+            <label style="font-size: 0.88rem; font-weight: 600; color: #475569; display: block; margin-bottom: 6px;">
+                🌐 Select Language / भाषा / ಭಾಷೆ / భాష
+            </label>
+            <div style="display: flex; gap: 8px;">
+                <select name="language" class="form-control" style="max-width: 240px;" onchange="this.form.submit()">
+                    {% for lang in available_languages %}
+                        <option value="{{ lang }}" {% if current_lang == lang %}selected{% endif %}>{{ lang }}</option>
+                    {% endfor %}
+                </select>
+                <noscript><button type="submit" class="btn btn-primary btn-sm">Update</button></noscript>
+            </div>
+        </form>
+    </div>
+    <div>
+        <img src="{{ url_for('static', filename='images/telemedicine_hero.jpg') }}" alt="Telemedicine Kiosk" class="hero-img" onerror="this.src='{{ url_for('static', filename='images/telemedicine_hero.png') }}'">
+    </div>
+</div>
+
+<div class="section-label">{{ get_text('choose_role', current_lang) }}</div>
+
+<div class="choice-grid">
+    <!-- Patient Card -->
+    <div class="card choice-card">
+        <div>
+            <div class="choice-card-header">
+                <div class="choice-icon-circle">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0284C7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </div>
+                <div>
+                    <div class="choice-card-title">{{ get_text('card_patient_title', current_lang) }}</div>
+                    <div class="choice-card-desc">{{ get_text('card_patient_desc', current_lang) }}</div>
+                </div>
+            </div>
+        </div>
+        <a href="{{ url_for('patient_login') }}" class="btn btn-primary">
+            {{ get_text('card_patient_btn', current_lang) }}
+        </a>
+    </div>
+
+    <!-- Doctor Card -->
+    <div class="card choice-card">
+        <div>
+            <div class="choice-card-header">
+                <div class="choice-icon-circle">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0284C7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"></path>
+                        <path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"></path>
+                        <circle cx="20" cy="10" r="2"></circle>
+                    </svg>
+                </div>
+                <div>
+                    <div class="choice-card-title">{{ get_text('card_doctor_title', current_lang) }}</div>
+                    <div class="choice-card-desc">{{ get_text('card_doctor_desc', current_lang) }}</div>
+                </div>
+            </div>
+        </div>
+        <a href="{{ url_for('doctor_login') }}" class="btn btn-secondary">
+            {{ get_text('card_doctor_btn', current_lang) }}
+        </a>
+    </div>
+</div>
+{% endblock %}

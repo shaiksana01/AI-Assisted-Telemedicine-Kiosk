@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Doctor Registration - AI-Assisted Telemedicine Kiosk{% endblock %}
+
+{% block content %}
+<div style="max-width: 540px; margin: 0 auto;">
+    <div class="card">
+        <h2 class="hero-title" style="font-size: 1.6rem; text-align: center; margin-bottom: 20px;">
+            {{ get_text('doctor_reg_tab', current_lang) }}
+        </h2>
+
+        <form method="POST" action="{{ url_for('doctor_register') }}">
+            <div class="form-group">
+                <label for="full_name">{{ get_text('lbl_full_name', current_lang) }} *</label>
+                <input type="text" id="full_name" name="full_name" class="form-control" placeholder="Dr. Suresh Rao" required>
+            </div>
+
+            <div class="form-group">
+                <label for="email">{{ get_text('lbl_email', current_lang) }} *</label>
+                <input type="email" id="email" name="email" class="form-control" placeholder="doctor@health.gov.in" required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="specialization">{{ get_text('lbl_specialization', current_lang) }}</label>
+                    <input type="text" id="specialization" name="specialization" class="form-control" placeholder="General Medicine">
+                </div>
+                <div class="form-group">
+                    <label for="license_number">{{ get_text('lbl_license_no', current_lang) }}</label>
+                    <input type="text" id="license_number" name="license_number" class="form-control" placeholder="MCI-12345">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="phone_number">{{ get_text('lbl_phone', current_lang) }} *</label>
+                <input type="text" id="phone_number" name="phone_number" class="form-control" placeholder="10-digit phone number" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">{{ get_text('lbl_password', current_lang) }} *</label>
+                <input type="password" id="password" name="password" class="form-control" placeholder="Create doctor password" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="margin-top: 8px;">
+                {{ get_text('btn_register', current_lang) }}
+            </button>
+        </form>
+
+        <hr style="margin: 20px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+        <div style="text-align: center; font-size: 0.9rem; color: #64748b;">
+            Already registered? <a href="{{ url_for('doctor_login') }}" style="color: var(--primary); font-weight: 600;">Login Here</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

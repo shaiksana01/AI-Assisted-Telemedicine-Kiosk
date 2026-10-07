@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Patient Dashboard - AI-Assisted Telemedicine Kiosk{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div>
+            <h2 class="hero-title" style="font-size: 1.6rem;">Welcome, {{ patient.full_name }}</h2>
+            <div style="color: #64748b; font-size: 0.92rem; margin-top: 4px;">
+                <strong>Patient ID:</strong> <code>{{ patient.patient_id }}</code> &nbsp;|&nbsp; 
+                <strong>Age/Gender:</strong> {{ patient.age }} Y / {{ patient.gender }} &nbsp;|&nbsp; 
+                <strong>Language:</strong> {{ patient.preferred_language }}
+            </div>
+        </div>
+        <div>
+            <a href="{{ url_for('symptoms') }}" class="btn btn-primary" style="width: auto;">
+                🩺 Start Consultation
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="choice-grid">
+    <div class="card">
+        <h3 class="choice-card-title">Describe Symptoms & AI Triage</h3>
+        <p class="choice-card-desc" style="margin: 8px 0 16px 0;">
+            Enter your symptoms using keyboard typing or voice recording in your regional language.
+        </p>
+        <a href="{{ url_for('symptoms') }}" class="btn btn-primary">
+            Describe Symptoms →
+        </a>
+    </div>
+
+    <div class="card">
+        <h3 class="choice-card-title">Electronic Health Record (EHR)</h3>
+        <p class="choice-card-desc" style="margin: 8px 0 16px 0;">
+            View your complete history of past consultations, preliminary triage results, and digital prescriptions.
+        </p>
+        <a href="{{ url_for('health_record', patient_id=patient.patient_id) }}" class="btn btn-secondary">
+            View My Health Records →
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Help & Instructions - AI-Assisted Telemedicine Kiosk{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1 class="hero-title" style="font-size: 1.8rem;">{{ get_text('help_title', current_lang) }}</h1>
+    
+    <div class="section-label" style="margin-top: 20px;">{{ get_text('help_steps_title', current_lang) }}</div>
+    <ul style="color: #334155; line-height: 1.8; margin-left: 20px;">
+        <li><strong>{{ get_text('help_step1', current_lang) }}</strong></li>
+        <li><strong>{{ get_text('help_step2', current_lang) }}</strong></li>
+        <li><strong>{{ get_text('help_step3', current_lang) }}</strong></li>
+        <li><strong>{{ get_text('help_step4', current_lang) }}</strong></li>
+        <li><strong>{{ get_text('help_step5', current_lang) }}</strong></li>
+        <li><strong>{{ get_text('help_step6', current_lang) }}</strong></li>
+        <li><strong>{{ get_text('help_step7', current_lang) }}</strong></li>
+        <li><strong>{{ get_text('help_step8', current_lang) }}</strong></li>
+    </ul>
+
+    <div class="section-label" style="margin-top: 24px;">{{ get_text('help_troubleshooting_title', current_lang) }}</div>
+    <div class="alert alert-info">
+        <div><strong>Microphone Support:</strong> {{ get_text('help_mic_issue', current_lang) }}</div>
+        <div style="margin-top: 8px;"><strong>Camera Access:</strong> {{ get_text('help_cam_issue', current_lang) }}</div>
+    </div>
+
+    <div style="margin-top: 20px;">
+        <a href="{{ url_for('index') }}" class="btn btn-secondary btn-sm" style="width: auto;">
+            ← {{ get_text('btn_back_home', current_lang) }}
+        </a>
+    </div>
+</div>
+{% endblock %}

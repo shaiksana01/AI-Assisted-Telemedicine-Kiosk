@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Patient Registration - AI-Assisted Telemedicine Kiosk{% endblock %}
+
+{% block content %}
+<div style="max-width: 540px; margin: 0 auto;">
+    <div class="card">
+        <h2 class="hero-title" style="font-size: 1.6rem; text-align: center; margin-bottom: 20px;">
+            {{ get_text('auth_patient_reg_tab', current_lang) }}
+        </h2>
+
+        <form method="POST" action="{{ url_for('patient_register') }}">
+            <div class="form-group">
+                <label for="full_name">{{ get_text('lbl_full_name', current_lang) }} *</label>
+                <input type="text" id="full_name" name="full_name" class="form-control" placeholder="e.g. Ramesh Kumar" required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="age">{{ get_text('lbl_age', current_lang) }} *</label>
+                    <input type="number" id="age" name="age" class="form-control" min="1" max="120" value="32" required>
+                </div>
+                <div class="form-group">
+                    <label for="gender">{{ get_text('lbl_gender', current_lang) }} *</label>
+                    <select id="gender" name="gender" class="form-control" required>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="phone_number">{{ get_text('lbl_phone', current_lang) }} *</label>
+                <input type="text" id="phone_number" name="phone_number" class="form-control" placeholder="10-digit mobile number" required>
+            </div>
+
+            <div class="form-group">
+                <label for="location">{{ get_text('lbl_location', current_lang) }}</label>
+                <input type="text" id="location" name="location" class="form-control" placeholder="Village / Town name">
+            </div>
+
+            <div class="form-group">
+                <label for="preferred_language">{{ get_text('lbl_pref_lang', current_lang) }}</label>
+                <select id="preferred_language" name="preferred_language" class="form-control">
+                    {% for lang in available_languages %}
+                        <option value="{{ lang }}" {% if current_lang == lang %}selected{% endif %}>{{ lang }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="password">{{ get_text('lbl_password', current_lang) }}</label>
+                <input type="password" id="password" name="password" class="form-control" placeholder="Create a secure password">
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="margin-top: 8px;">
+                {{ get_text('btn_register', current_lang) }}
+            </button>
+        </form>
+
+        <hr style="margin: 20px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+        <div style="text-align: center; font-size: 0.9rem; color: #64748b;">
+            Already have an account? <a href="{{ url_for('patient_login') }}" style="color: var(--primary); font-weight: 600;">Login Here</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

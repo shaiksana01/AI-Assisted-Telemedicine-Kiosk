@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Patient Portal - Login{% endblock %}
+
+{% block content %}
+<div style="max-width: 480px; margin: 0 auto;">
+    <div class="card">
+        <h2 class="hero-title" style="font-size: 1.6rem; text-align: center; margin-bottom: 20px;">
+            {{ get_text('auth_patient_title', current_lang) }}
+        </h2>
+
+        <form method="POST" action="{{ url_for('patient_login') }}">
+            <div class="form-group">
+                <label for="phone_number">{{ get_text('lbl_phone', current_lang) }}</label>
+                <input type="text" id="phone_number" name="phone_number" class="form-control" placeholder="10-digit mobile number" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">{{ get_text('lbl_password', current_lang) }}</label>
+                <input type="password" id="password" name="password" class="form-control" placeholder="Your password">
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="margin-top: 8px;">
+                {{ get_text('btn_login', current_lang) }}
+            </button>
+        </form>
+
+        <hr style="margin: 20px 0; border: 0; border-top: 1px solid var(--border-color);">
+
+        <div style="text-align: center; font-size: 0.9rem; color: #64748b;">
+            New patient? <a href="{{ url_for('patient_register') }}" style="color: var(--primary); font-weight: 600;">Register Here</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="{{ lang_code|default('en') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AI-Assisted Telemedicine Kiosk{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container header-inner">
+            <a href="{{ url_for('index') }}" class="brand-title">
+                🏥 AI-Assisted Telemedicine Kiosk
+            </a>
+            <nav class="main-nav">
+                <a href="{{ url_for('index') }}" class="{% if active_page == 'home' %}active{% endif %}">{{ get_text('nav_home', current_lang) }}</a>
+                <a href="{{ url_for('about') }}" class="{% if active_page == 'about' %}active{% endif %}">{{ get_text('nav_about', current_lang) }}</a>
+                <a href="{{ url_for('help_page') }}" class="{% if active_page == 'help' %}active{% endif %}">{{ get_text('nav_help', current_lang) }}</a>
+                
+                {% if session.get('patient_id') %}
+                    <a href="{{ url_for('patient_dashboard') }}" class="{% if active_page == 'patient_dashboard' %}active{% endif %}">{{ session.get('patient_name') }}</a>
+                    <a href="{{ url_for('health_record', patient_id=session.get('patient_id')) }}">{{ get_text('nav_ehr', current_lang) }}</a>
+                    <a href="{{ url_for('logout') }}" style="color: #dc2626;">{{ get_text('nav_logout', current_lang) }}</a>
+                {% elif session.get('doctor_id') %}
+                    <a href="{{ url_for('doctor_dashboard') }}" class="{% if active_page == 'doctor_dashboard' %}active{% endif %}">Dr. {{ session.get('doctor_name') }}</a>
+                    <a href="{{ url_for('logout') }}" style="color: #dc2626;">{{ get_text('nav_logout', current_lang) }}</a>
+                {% endif %}
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category if category != 'error' else 'danger' }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div>{{ get_text('footer_disclaimer', current_lang) }}</div>
+            <div style="margin-top: 4px; font-size: 0.78rem;">{{ get_text('footer_credit', current_lang) }}</div>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

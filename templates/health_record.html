@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Electronic Health Record (EHR) - {{ patient.full_name }}{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom: 24px;">
+    <h2 class="hero-title" style="font-size: 1.6rem;">{{ get_text('ehr_title', current_lang) }}</h2>
+    <div style="font-size: 0.95rem; color: #475569; margin-top: 8px;">
+        <strong>Patient:</strong> {{ patient.full_name }} &nbsp;|&nbsp; 
+        <strong>Patient ID:</strong> <code>{{ patient.patient_id }}</code> &nbsp;|&nbsp; 
+        <strong>Age / Gender:</strong> {{ patient.age }} Yrs / {{ patient.gender }} &nbsp;|&nbsp; 
+        <strong>Location:</strong> {{ patient.location or 'Rural Center' }}
+    </div>
+</div>
+
+<div class="card">
+    <h3 style="margin-bottom: 16px;">{{ get_text('ehr_past_consultations', current_lang) }} ({{ consultations|length }})</h3>
+
+    {% if not consultations %}
+        <div class="alert alert-info">{{ get_text('ehr_no_records', current_lang) }}</div>
+    {% else %}
+        {% for cns in consultations %}
+        <div style="border: 1px solid var(--border-color); border-radius: 6px; padding: 18px; margin-bottom: 16px; background-color: #f8fafc;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <div>
+                    <strong>Consultation Token:</strong> <code>{{ cns.consultation_id }}</code>
+                    <span style="font-size: 0.85rem; color: #64748b; margin-left: 8px;">Date: {{ cns.created_at }}</span>
+                </div>
+                <div>
+                    <span class="badge badge-{{ 'low' if cns.triage_priority == 'Low Priority' else ('moderate' if cns.triage_priority == 'Moderate Priority' else ('high' if cns.triage_priority == 'High Priority' else 'urgent')) }}">
+                        {{ cns.triage_priority }}
+                    </span>
+                </div>
+            </div>
+
+            <div style="font-size: 0.9rem; color: #334155; margin-bottom: 6px;">
+                <strong>Symptoms Reported:</strong> {{ cns.symptoms_text }}
+            </div>
+            <div style="font-size: 0.9rem; color: #334155; margin-bottom: 6px;">
+                <strong>Attending Doctor:</strong> {{ cns.doctor_name or 'Pending Doctor Assignment' }}
+            </div>
+            <div style="font-size: 0.9rem; color: #334155; margin-bottom: 12px;">
+                <strong>Clinical Observations:</strong> {{ cns.doctor_observations or cns.doctor_notes or 'No observation notes recorded.' }}
+            </div>
+
+            {% if cns.prescription %}
+                <div style="background-color: #ffffff; border: 1px solid var(--border-color); border-radius: 4px; padding: 12px; margin-top: 10px;">
+                    <div style="font-weight: 700; color: #0284c7; margin-bottom: 6px;">💊 Prescribed Medications:</div>
+                    <ul style="font-size: 0.88rem; color: #1e293b; margin-left: 20px;">
+                        {% for med in cns.prescription.items %}
+                            <li><strong>{{ med.medicine_name }}</strong> - {{ med.dosage }}, {{ med.frequency }} for {{ med.duration }} (<em>{{ med.instructions }}</em>)</li>
+                        {% endfor %}
+                    </ul>
+                    <div style="margin-top: 10px;">
+                        <a href="{{ url_for('view_prescription', consultation_id=cns.consultation_id) }}" class="btn btn-secondary btn-sm" style="width: auto;">
+                            📄 View Printable Prescription
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>
+{% endblock %}

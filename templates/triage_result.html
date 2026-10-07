@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Preliminary AI Triage Result{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2 class="hero-title" style="font-size: 1.6rem;">{{ get_text('triage_title', current_lang) }}</h2>
+    <div class="hero-subtitle">{{ get_text('triage_subtitle', current_lang) }}</div>
+
+    {% if triage.is_emergency %}
+        <div class="alert alert-danger" style="font-weight: 600;">
+            🚨 {{ get_text('triage_emergency_alert', current_lang) }}
+        </div>
+    {% endif %}
+
+    <div style="background-color: #f8fafc; border: 1px solid var(--border-color); border-radius: 6px; padding: 18px; margin: 16px 0;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+            <span style="font-weight: 700; font-size: 1.05rem;">{{ get_text('triage_priority_label', current_lang) }}</span>
+            <span class="badge badge-{{ 'low' if triage.predicted_priority == 'Low Priority' else ('moderate' if triage.predicted_priority == 'Moderate Priority' else ('high' if triage.predicted_priority == 'High Priority' else 'urgent')) }}" style="font-size: 1rem; padding: 4px 12px;">
+                {{ triage.predicted_priority }}
+            </span>
+        </div>
+
+        <div style="font-size: 0.92rem; color: #475569; margin-bottom: 8px;">
+            <strong>{{ get_text('triage_confidence_label', current_lang) }}</strong> {{ (triage.confidence_score * 100)|round|int }}%
+        </div>
+
+        <div style="font-size: 0.92rem; color: #475569; margin-bottom: 8px;">
+            <strong>{{ get_text('triage_detected_label', current_lang) }}</strong> {{ triage.detected_symptoms|join(', ') }}
+        </div>
+
+        <div style="font-size: 0.92rem; color: #475569;">
+            <strong>{{ get_text('triage_explanation_label', current_lang) }}</strong> {{ triage.explanation }}
+        </div>
+    </div>
+
+    <div class="alert alert-info" style="font-size: 0.85rem;">
+        <strong>Clinical Disclaimer:</strong> {{ get_text('triage_disclaimer', current_lang) }}
+    </div>
+
+    <div class="form-row" style="margin-top: 20px;">
+        <div>
+            <a href="{{ url_for('waiting_room', consultation_id=consultation_id) }}" class="btn btn-primary">
+                {{ get_text('btn_proceed_waiting', current_lang) }}
+            </a>
+        </div>
+        <div>
+            <button type="button" class="btn btn-secondary" onclick="playTTS('Your preliminary triage urgency level is {{ triage.predicted_priority }}. An attending physician will examine your case in the waiting room shortly.', '{{ lang_code }}')">
+                🔊 Read Out Result (TTS)
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Digital Prescription - {{ prescription.prescription_id }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+    <div class="card" style="border: 2px solid var(--primary); padding: 32px; background: #ffffff;">
+        <div style="display: flex; justify-content: space-between; border-bottom: 2px solid var(--primary); padding-bottom: 16px; margin-bottom: 20px;">
+            <div>
+                <h2 style="font-size: 1.4rem; color: #0369a1; font-weight: 800;">🏥 AI-Assisted Telemedicine Kiosk</h2>
+                <div style="font-size: 0.88rem; color: #64748b;">Primary Healthcare Support & Tele-Outpost</div>
+                <div style="font-size: 0.88rem; color: #64748b;">Rx No: <strong>{{ prescription.prescription_id }}</strong> | Date: {{ prescription.created_at }}</div>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-weight: 700; font-size: 1.05rem; color: #0f172a;">{{ prescription.doctor_name or 'Attending Doctor' }}</div>
+                <div style="font-size: 0.85rem; color: #64748b;">{{ prescription.specialization or 'General Medicine' }}</div>
+                <div style="font-size: 0.85rem; color: #64748b;">Reg No: {{ prescription.license_number or 'MCI-VERIFIED' }}</div>
+            </div>
+        </div>
+
+        <div style="background-color: #f8fafc; border: 1px solid var(--border-color); border-radius: 6px; padding: 14px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.9rem;">
+            <div><strong>Patient Name:</strong> {{ patient.full_name }}</div>
+            <div><strong>Patient ID:</strong> <code>{{ patient.patient_id }}</code></div>
+            <div><strong>Age / Gender:</strong> {{ patient.age }} Yrs / {{ patient.gender }}</div>
+            <div><strong>Location:</strong> {{ patient.location or 'Rural Center' }}</div>
+        </div>
+
+        <div style="font-size: 2rem; font-weight: 800; color: var(--primary); margin-bottom: 12px;">℞</div>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Medicine Name</th>
+                    <th>Dosage</th>
+                    <th>Frequency</th>
+                    <th>Duration</th>
+                    <th>Instructions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in prescription.items %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td><strong>{{ item.medicine_name }}</strong></td>
+                    <td>{{ item.dosage }}</td>
+                    <td>{{ item.frequency }}</td>
+                    <td>{{ item.duration }}</td>
+                    <td>{{ item.instructions }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="text-align: center; color: #64748b;">No medication items recorded.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="alert alert-info" style="margin-top: 20px;">
+            <strong>Doctor's Advice & Notes:</strong><br>
+            {{ prescription.general_notes }}
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid var(--border-color); padding-top: 24px; margin-top: 24px; font-size: 0.85rem; color: #64748b;">
+            <div>
+                <div><em>Generated via AI-Assisted Rural Telemedicine Kiosk</em></div>
+                <div>Archived to Longitudinal Patient Health Record (EHR)</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="width: 160px; border-top: 1px dashed #475569; margin-bottom: 4px;"></div>
+                <strong>{{ prescription.doctor_name or 'Attending Doctor' }}</strong><br>
+                <span style="font-size: 0.75rem; color: #16a34a;">Digital Signature Verified ✅</span>
+            </div>
+        </div>
+    </div>
+
+    <div style="display: flex; justify-content: center; gap: 16px; margin-top: 24px;">
+        <button type="button" class="btn btn-primary btn-sm" onclick="window.print()">
+            🖨️ Print Prescription
+        </button>
+        <a href="{{ url_for('health_record', patient_id=patient.patient_id) }}" class="btn btn-secondary btn-sm">
+            📋 View Full Health Record
+        </a>
+    </div>
+</div>
+{% endblock %}

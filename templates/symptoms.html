@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Enter Symptoms - AI-Assisted Telemedicine Kiosk{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2 class="hero-title" style="font-size: 1.6rem;">{{ get_text('symptom_title', current_lang) }}</h2>
+    <p class="hero-desc">{{ get_text('symptom_desc', current_lang) }}</p>
+
+    <!-- Informed Consent Box -->
+    <div class="alert alert-info">
+        <strong>Privacy & Clinical Consent:</strong> Symptoms are collected to provide algorithmic preliminary triage decision support. The attending doctor will conduct the formal clinical consultation and make final diagnosis.
+    </div>
+
+    <!-- Voice Input Box -->
+    <div class="card" style="background-color: #f8fafc; border: 1px dashed var(--primary); margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div>
+                <strong style="font-size: 1.05rem;">🎙️ Voice Input (OpenAI Whisper)</strong>
+                <p style="font-size: 0.88rem; color: #64748b; margin-top: 2px;" id="voiceStatusText">
+                    Click record to speak your symptoms in {{ current_lang }}. Whisper will transcribe your voice.
+                </p>
+            </div>
+            <div>
+                <button type="button" class="btn btn-primary btn-sm" id="recordVoiceBtn" onclick="toggleVoiceRecording('{{ lang_code }}')" style="width: auto;">
+                    🎙️ Record Voice
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Common Symptom Chips -->
+    <div style="font-size: 0.9rem; font-weight: 600; color: #334155;">{{ get_text('quick_symptoms_label', current_lang) }}</div>
+    <div class="chips-container">
+        <button type="button" class="chip-btn" data-val="Fever">🌡️ Fever / बुखार / ಜ್ವರ</button>
+        <button type="button" class="chip-btn" data-val="Cough">🗣️ Cough / खांसी / ಕೆಮ್ಮು</button>
+        <button type="button" class="chip-btn" data-val="Cold">🤧 Cold / सर्दी / ಶೀತ</button>
+        <button type="button" class="chip-btn" data-val="Headache">🤕 Headache / सिरदर्द / ತಲೆನೋವು</button>
+        <button type="button" class="chip-btn" data-val="Body Pain">💪 Body Pain / बदन दर्द</button>
+        <button type="button" class="chip-btn" data-val="Vomiting">🤢 Vomiting / उल्टी / ವಾಂತಿ</button>
+        <button type="button" class="chip-btn" data-val="Stomach Pain">⚡ Stomach Pain / पेट दर्द</button>
+        <button type="button" class="chip-btn" data-val="Breathing Difficulty">🫁 Breathing Issue / सांस तकलीफ</button>
+    </div>
+
+    <!-- Symptom Submission Form -->
+    <form method="POST" action="{{ url_for('symptoms') }}">
+        <div class="form-group">
+            <label for="symptom_text">{{ get_text('transcribed_heading', current_lang) }}</label>
+            <textarea id="symptom_text" name="symptom_text" class="form-control" rows="4" placeholder="{{ get_text('lbl_text_placeholder', current_lang) }}" required></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            {{ get_text('btn_submit_triage', current_lang) }}
+        </button>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/voice.js') }}"></script>
+{% endblock %}

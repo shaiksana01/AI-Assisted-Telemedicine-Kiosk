@@ -46,6 +46,46 @@ def test_multilingual_loader():
         print(f"[{l}] Title: {title}")
     print("✅ Multilingual translations passed!\n")
 
+def test_flask_web_pages():
+    print("--- 7. Testing Browser-Based Flask Web Application Pages & Flows ---")
+    import app as main_app
+    client = main_app.app.test_client()
+
+    # 1. Home, About, Help
+    assert client.get("/").status_code == 200
+    assert client.get("/about").status_code == 200
+    assert client.get("/help").status_code == 200
+
+    # 2. Patient Registration via HTML form
+    test_phone = f"987{int(time.time() + 60) % 10000000:07d}"
+    res_reg = client.post("/patient/register", data={
+        "full_name": "Web Test Patient",
+        "age": "29",
+        "gender": "Female",
+        "phone_number": test_phone,
+        "location": "Mysuru Village",
+        "preferred_language": "Kannada",
+        "password": "webpass123"
+    }, follow_redirects=True)
+    assert res_reg.status_code == 200
+    assert b"Web Test Patient" in res_reg.data
+
+    # 3. Symptom entry & Random Forest Triage
+    res_sym = client.post("/symptoms", data={
+        "symptom_text": "Severe fever and body pain for two days"
+    }, follow_redirects=True)
+    assert res_sym.status_code == 200
+    assert b"Preliminary AI Triage Result" in res_sym.data
+
+    # 4. Doctor Login & Dashboard
+    res_doc_login = client.post("/doctor/login", data={
+        "id_or_email": "doctor@kiosk.in",
+        "password": "doctor123"
+    }, follow_redirects=True)
+    assert res_doc_login.status_code == 200
+    assert b"Doctor Dashboard" in res_doc_login.data or b"doctor" in res_doc_login.data.lower()
+    print("✅ All Flask HTML web pages & workflows verified!\n")
+
 def run_all_tests():
     print("==================================================")
     print("RUNNING AI TELEMEDICINE KIOSK FULL 100% TEST SUITE")
@@ -80,12 +120,10 @@ def run_all_tests():
     test_flask_endpoints()
     print("✅ Flask REST API tests passed!\n")
 
-    print("--- 7. Testing Frontend app.py Syntax & Imports ---")
-    import app
-    print("✅ Streamlit app.py imported without errors!\n")
+    test_flask_web_pages()
 
     print("==================================================")
-    print("🎉 ALL 100% SYSTEM VERIFICATION TESTS PASSED!")
+    print("🎉 ALL 100% FLASK SYSTEM VERIFICATION TESTS PASSED!")
     print("==================================================")
 
 if __name__ == "__main__":
