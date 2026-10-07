@@ -1,41 +1,41 @@
 """
 AI-Assisted Telemedicine Kiosk
-Healthcare support for rural communities
+A Multilingual and Voice-Enabled Healthcare System for Rural India
 ================================================================================
-A clean, student-built healthcare website with separate Patient and Doctor portals,
-step-by-step consultation flow, and ML triage support.
+Comprehensive, full-featured telemedicine kiosk application providing:
+- Multilingual UI (English, Hindi, Kannada, Telugu)
+- Patient & Doctor Authentication with Role-Based Access Control
+- Speech-to-Text Symptom Input (OpenAI Whisper) & Text Input
+- Supervised Random Forest Preliminary Care-Priority Triage
+- Live Encrypted WebRTC Video Consultation Room
+- Structured Digital Prescription Builder with Printable View
+- Complete Patient Electronic Health Record (EHR) & Consultation Trajectory
+- Text-to-Speech (TTS) Voice Guidance for Rural Accessibility
 """
 
 import streamlit as st
 import os
 import json
-import pandas as pd
+import io
+import time
 from datetime import datetime
 
-# Database and ML modules
-from database.database import (
-    init_db,
-    register_patient_account,
-    authenticate_patient,
-    register_doctor_account,
-    authenticate_doctor,
-    create_consultation,
-    get_patient_by_id,
-    get_consultation_by_id,
-    get_all_consultations,
-    update_consultation_status,
-    update_doctor_notes,
-    get_queue_summary_stats
-)
+# Database & Backend services
+import database.database as db
 from ml.predict import (
     predict_triage_priority,
     load_triage_model,
     SYMPTOM_DISPLAY_NAMES,
     SYMPTOM_COLUMNS
 )
-from utils.translations import get_text, get_available_languages
+from utils.translations import get_text, get_available_languages, get_language_code
+from utils.webrtc_component import render_webrtc_consultation
+from backend.speech.whisper_service import transcribe_audio
+from backend.speech.tts_service import synthesize_speech
+from backend.services.prescription_service import generate_prescription_html
+from backend.services.ehr_service import get_complete_patient_history
 
-# Page Config
+# Page Configuration
 st.set_page_config(
     page_title="AI-Assisted Telemedicine Kiosk",
     page_icon="🏥",
@@ -43,35 +43,29 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Initialize database
-init_db()
+# Initialize Database Schema
+db.init_db()
 
-# Clean, Light Healthcare Website CSS
+# ------------------------------------------------------------------------------
+# CLEAN HEALTHCARE THEME CSS
+# ------------------------------------------------------------------------------
 st.markdown("""
 <style>
-    /* Hide Streamlit default sidebar and header */
-    [data-testid="stSidebar"] {
-        display: none !important;
-    }
-    [data-testid="collapsedControl"] {
-        display: none !important;
-    }
-    #MainMenu {visibility: hidden;}
-    header {visibility: hidden;}
-    footer {visibility: hidden;}
+    /* Clean Streamlit Layout */
+    [data-testid="stSidebar"] { display: none !important; }
+    [data-testid="collapsedControl"] { display: none !important; }
+    #MainMenu { visibility: hidden; }
+    header { visibility: hidden; }
+    footer { visibility: hidden; }
     
-    /* Base Typography & Light Healthcare Background */
+    /* Base Healthcare Typography & Colors */
     html, body, [class*="css"] {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        color: #263238;
+        color: #1E293B;
         background-color: #F8FAFC;
     }
+    .stApp { background-color: #F8FAFC; }
     
-    .stApp {
-        background-color: #F8FAFC;
-    }
-    
-    /* Central Content Constraints */
     .block-container {
         max-width: 1040px !important;
         padding-top: 1.25rem !important;
@@ -79,306 +73,112 @@ st.markdown("""
         background-color: #F8FAFC;
     }
     
-    /* Top Website Header */
     .brand-title {
-        font-size: 1.12rem;
+        font-size: 1.15rem;
         font-weight: 700;
-        color: #1E3A5F;
-        padding-top: 4px;
+        color: #0F172A;
         letter-spacing: -0.2px;
     }
     
-    /* Header Navigation Links */
-    .st-key-top_home_btn button,
-    .st-key-top_about_btn button,
-    .st-key-top_help_btn button,
+    /* Navigation Link Buttons */
     div[class*="st-key-top_"] button {
         background: transparent !important;
         border: none !important;
         border-bottom: 2.5px solid transparent !important;
         box-shadow: none !important;
         color: #64748B !important;
-        font-size: 0.95rem !important;
+        font-size: 0.92rem !important;
         font-weight: 500 !important;
-        padding: 4px 10px 6px 10px !important;
+        padding: 4px 8px !important;
         min-height: unset !important;
-        height: auto !important;
-        border-radius: 0 !important;
         cursor: pointer !important;
-        white-space: nowrap !important;
-        overflow: visible !important;
-        text-overflow: clip !important;
-        width: 100% !important;
-        text-align: center !important;
-        transition: color 0.15s ease, border-color 0.15s ease !important;
+        transition: all 0.15s ease !important;
     }
-    
-    .st-key-top_home_btn button p,
-    .st-key-top_about_btn button p,
-    .st-key-top_help_btn button p,
-    div[class*="st-key-top_"] button p,
-    div[class*="st-key-top_"] button span {
-        font-size: 0.95rem !important;
-        white-space: nowrap !important;
-        overflow: visible !important;
-        text-overflow: clip !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    
-    .st-key-top_home_btn button:hover,
-    .st-key-top_about_btn button:hover,
-    .st-key-top_help_btn button:hover,
     div[class*="st-key-top_"] button:hover {
-        background: transparent !important;
-        color: #1E3A5F !important;
-        border: none !important;
-        border-bottom: 2.5px solid #CBD5E1 !important;
+        color: #0284C7 !important;
+        border-bottom: 2.5px solid #0284C7 !important;
     }
-    
-    /* Active Link State */
-    .st-key-top_home_btn button[kind="primary"],
-    .st-key-top_about_btn button[kind="primary"],
-    .st-key-top_help_btn button[kind="primary"],
-    .st-key-top_home_btn button[data-testid="baseButton-primary"],
-    .st-key-top_about_btn button[data-testid="baseButton-primary"],
-    .st-key-top_help_btn button[data-testid="baseButton-primary"],
     div[class*="st-key-top_"] button[kind="primary"],
     div[class*="st-key-top_"] button[data-testid="baseButton-primary"] {
-        background: transparent !important;
-        color: #1E3A5F !important;
+        color: #0284C7 !important;
         font-weight: 700 !important;
-        border: none !important;
-        border-bottom: 2.5px solid #237099 !important;
+        border-bottom: 2.5px solid #0284C7 !important;
     }
-    
-    /* Hero Section */
+
+    /* Hero Styling */
     .hero-title {
-        font-size: 2.1rem;
+        font-size: 2.2rem;
         font-weight: 800;
-        color: #1E3A5F;
-        line-height: 1.2;
-        margin-bottom: 12px;
-        letter-spacing: -0.4px;
+        color: #0F172A;
+        line-height: 1.15;
+        margin-bottom: 0.4rem;
     }
-    
     .hero-subtitle {
-        font-size: 1.12rem;
+        font-size: 1.1rem;
         font-weight: 600;
-        color: #237099;
-        margin-bottom: 12px;
+        color: #0284C7;
+        margin-bottom: 0.8rem;
     }
-    
     .hero-desc {
         font-size: 0.95rem;
-        color: #64748B;
-        line-height: 1.55;
-        margin-bottom: 20px;
+        color: #475569;
+        line-height: 1.5;
+        margin-bottom: 1.2rem;
     }
     
+    /* Cards & Containers */
     .section-label {
-        font-size: 1.12rem;
+        font-size: 1.05rem;
         font-weight: 700;
-        color: #1E3A5F;
-        margin-top: 26px;
-        margin-bottom: 14px;
+        color: #0F172A;
+        margin: 1.5rem 0 0.8rem 0;
     }
-    
-    /* Choice Cards Container */
-    div[data-testid="column"]:has(button[key="home_patient_btn"]) [data-testid="stVerticalBlockBorderWrapper"],
-    div[data-testid="column"]:has(button[key="home_doctor_btn"]) [data-testid="stVerticalBlockBorderWrapper"] {
-        background-color: #FFFFFF !important;
-        border: 1px solid #E2E8F0 !important;
-        border-radius: 8px !important;
-        padding: 24px 24px 22px 24px !important;
-        min-height: 180px !important;
-        height: 100% !important;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02) !important;
-        box-sizing: border-box !important;
-    }
-    
-    div[data-testid="column"]:has(button[key="home_patient_btn"]) [data-testid="stVerticalBlockBorderWrapper"] > div,
-    div[data-testid="column"]:has(button[key="home_doctor_btn"]) [data-testid="stVerticalBlockBorderWrapper"] > div {
-        height: 100% !important;
-        display: flex !important;
-        flex-direction: column !important;
-        justify-content: space-between !important;
-        gap: 20px !important;
-    }
-    
     .choice-card-header {
         display: flex;
-        align-items: flex-start;
-        gap: 16px;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
     }
-    
     .choice-icon-circle {
         width: 44px;
         height: 44px;
-        min-width: 44px;
         border-radius: 50%;
         background-color: #E0F2FE;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-top: 2px;
+        flex-shrink: 0;
     }
-    
-    .choice-card-text {
-        flex: 1;
-    }
-    
     .choice-card-title {
-        font-size: 1.05rem;
+        font-size: 1.1rem;
         font-weight: 700;
-        color: #1E3A5F;
-        margin-bottom: 4px;
+        color: #0F172A;
     }
-    
     .choice-card-desc {
         font-size: 0.88rem;
         color: #64748B;
-        line-height: 1.45;
+        line-height: 1.4;
     }
-    
-    .page-title {
-        font-size: 1.3rem;
-        font-weight: 700;
-        color: #1E3A5F;
-        margin-bottom: 6px;
-    }
-    
-    .page-subtitle {
-        font-size: 0.9rem;
-        color: #64748B;
-        margin-bottom: 18px;
-    }
-    
-    /* Action Buttons Styling */
-    .st-key-home_patient_btn button,
-    button[data-testid="baseButton-primary"]:not([key^="top_"]) {
-        background-color: #237099 !important;
-        color: #FFFFFF !important;
-        border: 1px solid #237099 !important;
-        border-radius: 6px !important;
-        font-weight: 500 !important;
-        font-size: 0.92rem !important;
-        padding: 9px 18px !important;
-        min-height: 40px !important;
-        height: 40px !important;
-        width: 100% !important;
-        margin-top: auto !important;
-        transition: background-color 0.15s ease, border-color 0.15s ease !important;
-    }
-    .st-key-home_patient_btn button:hover,
-    button[data-testid="baseButton-primary"]:not([key^="top_"]):hover {
-        background-color: #1A5676 !important;
-        border-color: #1A5676 !important;
-        color: #FFFFFF !important;
-    }
-    
-    .st-key-home_doctor_btn button,
-    button[data-testid="baseButton-secondary"]:not([key^="top_"]) {
-        background-color: #FFFFFF !important;
-        color: #237099 !important;
-        border: 1.5px solid #237099 !important;
-        border-radius: 6px !important;
-        font-weight: 500 !important;
-        font-size: 0.92rem !important;
-        padding: 9px 18px !important;
-        min-height: 40px !important;
-        height: 40px !important;
-        width: 100% !important;
-        margin-top: auto !important;
-        transition: background-color 0.15s ease, border-color 0.15s ease !important;
-    }
-    .st-key-home_doctor_btn button:hover,
-    button[data-testid="baseButton-secondary"]:not([key^="top_"]):hover {
-        background-color: #F0F9FF !important;
-        color: #1A5676 !important;
-        border-color: #1A5676 !important;
-    }
-    
-    /* Form inputs and textareas */
-    input, textarea, select {
-        background-color: #FFFFFF !important;
-        border: 1px solid #D9E3EA !important;
-        color: #263238 !important;
-        border-radius: 4px !important;
-    }
-    input:focus, textarea:focus, select:focus {
-        border-color: #237099 !important;
-        box-shadow: 0 0 0 1px #237099 !important;
-    }
-    [data-testid="stTextInput"] input, [data-testid="stTextArea"] textarea {
-        background-color: #FFFFFF !important;
-        border-color: #D9E3EA !important;
-        color: #263238 !important;
-    }
-    [data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] label {
-        color: #263238 !important;
-    }
-    
-    /* Hero Image */
-    .stImage img {
-        border-radius: 8px;
-        max-height: 250px !important;
-        width: 100% !important;
-        object-fit: cover;
-    }
-    
-    /* Consultation Stepper Bar */
-    .consultation-stepper {
-        display: flex;
-        justify-content: center;
-        gap: 8px;
-        font-size: 0.82rem;
-        color: #607080;
-        padding-bottom: 12px;
-        margin-bottom: 20px;
-        border-bottom: 1px solid #D9E3EA;
-    }
-    
-    .step-current {
-        color: #2F6F95;
-        font-weight: 700;
-    }
-    
-    .step-past {
-        color: #607080;
-    }
-    
-    /* Footer Disclaimer Note */
-    .footer-disclaimer {
-        font-size: 0.78rem;
-        color: #8A9BA8;
-        text-align: center;
-        margin-top: 36px;
-        padding-top: 14px;
-        border-top: 1px solid #E4ECF2;
-    }
-    
+
     /* Priority Badges */
     .badge-low {
-        background-color: #EAF3F8;
-        color: #1E3A5F;
-        border: 1px solid #D9E3EA;
+        background-color: #F0FDF4;
+        color: #166534;
+        border: 1px solid #BBF7D0;
         padding: 4px 10px;
         border-radius: 4px;
         font-weight: 600;
         font-size: 0.9rem;
     }
-    
     .badge-moderate {
-        background-color: #FFFBEB;
-        color: #92400E;
-        border: 1px solid #FDE68A;
+        background-color: #FEFCE8;
+        color: #854D0E;
+        border: 1px solid #FEF08A;
         padding: 4px 10px;
         border-radius: 4px;
         font-weight: 600;
         font-size: 0.9rem;
     }
-    
     .badge-high {
         background-color: #FFF7ED;
         color: #9A3412;
@@ -388,7 +188,6 @@ st.markdown("""
         font-weight: 600;
         font-size: 0.9rem;
     }
-    
     .badge-urgent {
         background-color: #FEF2F2;
         color: #991B1B;
@@ -398,72 +197,154 @@ st.markdown("""
         font-weight: 600;
         font-size: 0.9rem;
     }
+    
+    .disclaimer-box {
+        background-color: #F8FAFC;
+        border: 1px solid #CBD5E1;
+        border-left: 4px solid #0284C7;
+        padding: 12px 16px;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        color: #475569;
+        line-height: 1.45;
+        margin: 14px 0;
+    }
+    .emergency-banner {
+        background-color: #FEF2F2;
+        border: 1px solid #F87171;
+        border-left: 5px solid #DC2626;
+        padding: 12px 16px;
+        border-radius: 4px;
+        font-size: 0.92rem;
+        color: #991B1B;
+        font-weight: 600;
+        margin: 14px 0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# Session State Initialization
+# ------------------------------------------------------------------------------
+# SESSION STATE INITIALIZATION
+# ------------------------------------------------------------------------------
 if "page" not in st.session_state:
     st.session_state.page = "home"
 if "language" not in st.session_state:
     st.session_state.language = "English"
 
-# Active user sessions
+# User authentication states
 if "logged_patient" not in st.session_state:
     st.session_state.logged_patient = None
 if "logged_doctor" not in st.session_state:
     st.session_state.logged_doctor = None
 
-# Active consultation session
-if "current_consultation" not in st.session_state:
-    st.session_state.current_consultation = None
+# Consultation workflow state
+if "current_consultation_id" not in st.session_state:
+    st.session_state.current_consultation_id = None
 if "last_prediction" not in st.session_state:
     st.session_state.last_prediction = None
-if "selected_doctor_case" not in st.session_state:
-    st.session_state.selected_doctor_case = None
-
-# Transient form fields
 if "symptom_input_text" not in st.session_state:
     st.session_state.symptom_input_text = ""
+if "selected_symptom_chips" not in st.session_state:
+    st.session_state.selected_symptom_chips = []
+if "selected_doctor_case_id" not in st.session_state:
+    st.session_state.selected_doctor_case_id = None
+if "prescription_medicines" not in st.session_state:
+    st.session_state.prescription_medicines = [
+        {"medicine_name": "Paracetamol 500mg", "dosage": "1 tablet", "frequency": "Twice daily after food", "duration": "3 days", "instructions": "For fever & body ache"},
+        {"medicine_name": "Cetirizine 10mg", "dosage": "1 tablet", "frequency": "Once daily at night", "duration": "3 days", "instructions": "For cold & congestion"}
+    ]
 
 def navigate_to(page_name: str):
-    """Navigate to a target page and rerun."""
+    """Navigate to target page and trigger rerun."""
     st.session_state.page = page_name
     st.rerun()
 
+def play_tts(text: str):
+    """Synthesize and play audio prompt."""
+    lang_code = get_language_code(st.session_state.language)
+    audio_bytes, err = synthesize_speech(text, voice="alloy", language_code=lang_code)
+    if audio_bytes:
+        st.audio(audio_bytes, format="audio/mp3", autoplay=True)
+
 # ------------------------------------------------------------------------------
-# 1. TOP HEADER (AI-Assisted Telemedicine Kiosk | Home - About - Help)
+# TOP WEBSITE HEADER (AI-Assisted Telemedicine Kiosk | Home - About - Help)
 # ------------------------------------------------------------------------------
-h_col1, h_col2 = st.columns([6, 3], gap="medium")
+h_col1, h_col2 = st.columns([5.5, 4.5], gap="medium")
 
 with h_col1:
-    st.markdown("<div class='brand-title'>AI-Assisted Telemedicine Kiosk</div>", unsafe_allow_html=True)
+    st.markdown("<div class='brand-title'>🏥 AI-Assisted Telemedicine Kiosk</div>", unsafe_allow_html=True)
 
 with h_col2:
-    nav_c1, nav_c2, nav_c3 = st.columns([1, 1, 1], gap="small")
-    with nav_c1:
-        if st.button("Home", key="top_home_btn", use_container_width=True, type="primary" if st.session_state.page == "home" else "secondary"):
-            navigate_to("home")
-    with nav_c2:
-        if st.button("About", key="top_about_btn", use_container_width=True, type="primary" if st.session_state.page == "about" else "secondary"):
-            navigate_to("about")
-    with nav_c3:
-        if st.button("Help", key="top_help_btn", use_container_width=True, type="primary" if st.session_state.page == "help" else "secondary"):
-            navigate_to("help")
+    if st.session_state.logged_patient:
+        n1, n2, n3, n4 = st.columns([1, 1, 1.4, 1.2], gap="small")
+        with n1:
+            if st.button("Home", key="top_home_btn", use_container_width=True, type="primary" if st.session_state.page == "home" else "secondary"):
+                navigate_to("home")
+        with n2:
+            if st.button("Help", key="top_help_btn", use_container_width=True, type="primary" if st.session_state.page == "help" else "secondary"):
+                navigate_to("help")
+        with n3:
+            if st.button("My Records (EHR)", key="top_ehr_btn", use_container_width=True, type="primary" if st.session_state.page == "patient_ehr" else "secondary"):
+                navigate_to("patient_ehr")
+        with n4:
+            if st.button("Logout", key="top_logout_btn", use_container_width=True):
+                st.session_state.logged_patient = None
+                navigate_to("home")
+    elif st.session_state.logged_doctor:
+        n1, n2, n3, n4 = st.columns([1, 1, 1.4, 1.2], gap="small")
+        with n1:
+            if st.button("Home", key="top_home_btn", use_container_width=True, type="primary" if st.session_state.page == "home" else "secondary"):
+                navigate_to("home")
+        with n2:
+            if st.button("Dashboard", key="top_doc_dash_btn", use_container_width=True, type="primary" if st.session_state.page == "doctor_dashboard" else "secondary"):
+                navigate_to("doctor_dashboard")
+        with n3:
+            if st.button("About", key="top_about_btn", use_container_width=True, type="primary" if st.session_state.page == "about" else "secondary"):
+                navigate_to("about")
+        with n4:
+            if st.button("Logout", key="top_logout_btn", use_container_width=True):
+                st.session_state.logged_doctor = None
+                navigate_to("home")
+    else:
+        n1, n2, n3 = st.columns([1, 1, 1], gap="small")
+        with n1:
+            if st.button("Home", key="top_home_btn", use_container_width=True, type="primary" if st.session_state.page == "home" else "secondary"):
+                navigate_to("home")
+        with n2:
+            if st.button("About", key="top_about_btn", use_container_width=True, type="primary" if st.session_state.page == "about" else "secondary"):
+                navigate_to("about")
+        with n3:
+            if st.button("Help", key="top_help_btn", use_container_width=True, type="primary" if st.session_state.page == "help" else "secondary"):
+                navigate_to("help")
 
-st.markdown("<hr style='margin: 4px 0 24px 0; border: 0; border-top: 1px solid #E2E8F0;'>", unsafe_allow_html=True)
+st.markdown("<hr style='margin: 4px 0 20px 0; border: 0; border-top: 1px solid #E2E8F0;'>", unsafe_allow_html=True)
 
 
 # ==============================================================================
-# 2. HOMEPAGE
+# 1. HOMEPAGE
 # ==============================================================================
 if st.session_state.page == "home":
     col_left, col_right = st.columns([5.5, 4.5], gap="large")
     
     with col_left:
-        st.markdown("<div class='hero-title'>AI-Assisted Telemedicine<br>Kiosk</div>", unsafe_allow_html=True)
-        st.markdown("<div class='hero-subtitle'>Healthcare support for rural communities</div>", unsafe_allow_html=True)
-        st.markdown("<p class='hero-desc'>Register as a patient or access the doctor portal to continue.</p>", unsafe_allow_html=True)
+        st.markdown(f"<div class='hero-title'>{get_text('hero_title', st.session_state.language)}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='hero-subtitle'>{get_text('hero_subtitle', st.session_state.language)}</div>", unsafe_allow_html=True)
+        st.markdown(f"<p class='hero-desc'>{get_text('hero_desc', st.session_state.language)}</p>", unsafe_allow_html=True)
         
+        # Language Selector Bar
+        st.markdown("<div style='font-weight: 600; font-size: 0.9rem; color: #475569; margin-bottom: 6px;'>🌐 Select Language / भाषा / ಭಾಷೆ / భాష</div>", unsafe_allow_html=True)
+        langs = get_available_languages()
+        selected_lang = st.selectbox(
+            "Language",
+            langs,
+            index=langs.index(st.session_state.language) if st.session_state.language in langs else 0,
+            label_visibility="collapsed",
+            key="home_lang_select"
+        )
+        if selected_lang != st.session_state.language:
+            st.session_state.language = selected_lang
+            st.rerun()
+
     with col_right:
         img_jpg = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "telemedicine_hero.jpg")
         img_png = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "telemedicine_hero.png")
@@ -474,12 +355,12 @@ if st.session_state.page == "home":
         else:
             st.image("https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=600&q=80", use_container_width=True)
             
-    st.markdown("<div class='section-label'>Choose how you want to continue</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='section-label'>{get_text('choose_role', st.session_state.language)}</div>", unsafe_allow_html=True)
     
     card_p, card_d = st.columns(2, gap="medium")
     with card_p:
         with st.container(border=True):
-            st.markdown("""
+            st.markdown(f"""
             <div class='choice-card-header'>
                 <div class='choice-icon-circle'>
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0284C7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -488,17 +369,17 @@ if st.session_state.page == "home":
                     </svg>
                 </div>
                 <div class='choice-card-text'>
-                    <div class='choice-card-title'>Patient</div>
-                    <div class='choice-card-desc'>For registering, describing symptoms and receiving preliminary assessment.</div>
+                    <div class='choice-card-title'>{get_text('card_patient_title', st.session_state.language)}</div>
+                    <div class='choice-card-desc'>{get_text('card_patient_desc', st.session_state.language)}</div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
-            if st.button("Continue as Patient →", key="home_patient_btn", type="primary", use_container_width=True):
-                navigate_to("patient_landing")
+            if st.button(get_text('card_patient_btn', st.session_state.language), key="home_patient_btn", type="primary", use_container_width=True):
+                navigate_to("patient_portal")
             
     with card_d:
         with st.container(border=True):
-            st.markdown("""
+            st.markdown(f"""
             <div class='choice-card-header'>
                 <div class='choice-icon-circle'>
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0284C7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -508,690 +389,740 @@ if st.session_state.page == "home":
                     </svg>
                 </div>
                 <div class='choice-card-text'>
-                    <div class='choice-card-title'>Doctor</div>
-                    <div class='choice-card-desc'>For viewing submitted patient cases and continuing consultation.</div>
+                    <div class='choice-card-title'>{get_text('card_doctor_title', st.session_state.language)}</div>
+                    <div class='choice-card-desc'>{get_text('card_doctor_desc', st.session_state.language)}</div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
-            if st.button("Continue as Doctor →", key="home_doctor_btn", type="secondary", use_container_width=True):
-                navigate_to("doctor_landing")
+            if st.button(get_text('card_doctor_btn', st.session_state.language), key="home_doctor_btn", type="secondary", use_container_width=True):
+                navigate_to("doctor_portal")
             
-    st.markdown("""
-    <hr style='margin: 40px 0 16px 0; border: 0; border-top: 1px solid #E2E8F0;'>
-    <div style='font-size: 0.76rem; color: #94A3B8; text-align: center; margin-bottom: 6px;'>
-        Preliminary assessment only. This system does not replace professional medical advice.
+    st.markdown(f"""
+    <hr style='margin: 36px 0 14px 0; border: 0; border-top: 1px solid #E2E8F0;'>
+    <div style='font-size: 0.78rem; color: #94A3B8; text-align: center; margin-bottom: 4px;'>
+        {get_text('footer_disclaimer', st.session_state.language)}
     </div>
-    <div style='font-size: 0.76rem; color: #94A3B8; text-align: center;'>
-        AI-Assisted Telemedicine Kiosk &nbsp;|&nbsp; College Mini Project
+    <div style='font-size: 0.78rem; color: #94A3B8; text-align: center;'>
+        {get_text('footer_credit', st.session_state.language)}
     </div>
     """, unsafe_allow_html=True)
 
 
 # ==============================================================================
-# ABOUT PAGE
+# 2. ABOUT PAGE
 # ==============================================================================
 elif st.session_state.page == "about":
-    st.markdown("<div class='page-title'>About the Project</div>", unsafe_allow_html=True)
-    st.markdown("""
-    <p style='color: #5F6F7F; line-height: 1.6; font-size: 0.95rem;'>
-        The <strong>AI-Assisted Telemedicine Kiosk</strong> is designed to support healthcare access in rural areas. Patients can register their basic details, describe their symptoms in their preferred regional language, and receive a preliminary priority assessment before consulting a doctor.
+    st.markdown(f"<div class='hero-title'>{get_text('about_title', st.session_state.language)}</div>", unsafe_allow_html=True)
+    st.markdown(f"""
+    <p style='color: #475569; line-height: 1.6; font-size: 0.95rem; margin-top: 12px;'>
+        {get_text('about_p1', st.session_state.language)}
     </p>
-    <p style='color: #5F6F7F; line-height: 1.6; font-size: 0.95rem;'>
-        The system helps streamline doctor consultations by prioritizing patient queues based on clinical urgency, allowing healthcare workers and attending doctors to review cases systematically.
+    <p style='color: #475569; line-height: 1.6; font-size: 0.95rem;'>
+        {get_text('about_p2', st.session_state.language)}
+    </p>
+    <p style='color: #475569; line-height: 1.6; font-size: 0.95rem;'>
+        {get_text('about_p3', st.session_state.language)}
     </p>
     """, unsafe_allow_html=True)
-    
-    if st.button("Back to Home", key="about_back_btn"):
+
+    st.markdown(f"""
+    <div class='disclaimer-box'>
+        <strong>Clinical Decision-Support Notice:</strong> {get_text('about_disclaimer', st.session_state.language)}
+    </div>
+    """, unsafe_allow_html=True)
+
+    if st.button(get_text('btn_back_home', st.session_state.language), key="about_back_btn"):
         navigate_to("home")
 
 
 # ==============================================================================
-# HELP PAGE
+# 3. HELP & INSTRUCTIONS PAGE
 # ==============================================================================
 elif st.session_state.page == "help":
-    st.markdown("<div class='page-title'>Help & FAQ</div>", unsafe_allow_html=True)
-    st.markdown("""
-    <p style='color: #5F6F7F; line-height: 1.6; font-size: 0.95rem;'>
-        <strong>For Patients:</strong><br>
-        Click 'Continue as Patient' on the homepage. If you are a new patient, choose 'Create Account' to register your details. Once registered or logged in, you will be guided through entering your symptoms and receiving a preliminary assessment before the doctor reviews your case.
-    </p>
-    <p style='color: #5F6F7F; line-height: 1.6; font-size: 0.95rem;'>
-        <strong>For Doctors:</strong><br>
-        Click 'Continue as Doctor' on the homepage. Log in using your Doctor ID / Email and password to access the patient queue, review patient symptoms, update consultation status, and save clinical notes.
-    </p>
-    """, unsafe_allow_html=True)
-    
-    if st.button("Back to Home", key="help_back_btn"):
+    st.markdown(f"<div class='hero-title'>{get_text('help_title', st.session_state.language)}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='section-label'>{get_text('help_steps_title', st.session_state.language)}</div>", unsafe_allow_html=True)
+
+    with st.container(border=True):
+        st.markdown(f"""
+        - **{get_text('help_step1', st.session_state.language)}**
+        - **{get_text('help_step2', st.session_state.language)}**
+        - **{get_text('help_step3', st.session_state.language)}**
+        - **{get_text('help_step4', st.session_state.language)}**
+        - **{get_text('help_step5', st.session_state.language)}**
+        - **{get_text('help_step6', st.session_state.language)}**
+        - **{get_text('help_step7', st.session_state.language)}**
+        - **{get_text('help_step8', st.session_state.language)}**
+        """)
+
+    st.markdown(f"<div class='section-label'>{get_text('help_troubleshooting_title', st.session_state.language)}</div>", unsafe_allow_html=True)
+    with st.container(border=True):
+        st.markdown(f"""
+        * **Microphone Permissions**: {get_text('help_mic_issue', st.session_state.language)}
+        * **Camera Access**: {get_text('help_cam_issue', st.session_state.language)}
+        """)
+
+    if st.button(get_text('btn_back_home', st.session_state.language), key="help_back_btn"):
         navigate_to("home")
 
 
 # ==============================================================================
-# 3. PATIENT LANDING (Login or Create Account)
+# 4. PATIENT PORTAL (LOGIN & REGISTRATION)
 # ==============================================================================
-elif st.session_state.page == "patient_landing":
-    st.markdown("<div class='page-title'>Patient</div>", unsafe_allow_html=True)
-    st.markdown("<div class='page-subtitle'>Please choose an option to continue</div>", unsafe_allow_html=True)
+elif st.session_state.page == "patient_portal":
+    st.markdown(f"<div class='hero-title'>{get_text('auth_patient_title', st.session_state.language)}</div>", unsafe_allow_html=True)
     
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Login", key="p_land_login", type="primary", use_container_width=True):
-            navigate_to("patient_login")
-    with col2:
-        if st.button("Create Account", key="p_land_create", type="secondary", use_container_width=True):
-            navigate_to("patient_register")
-            
-    st.markdown("<br><hr style='border: 0; border-top: 1px solid #D9E5EA;'>", unsafe_allow_html=True)
-    if st.button("Back to Home", key="p_land_back"):
-        navigate_to("home")
-
-
-# ==============================================================================
-# 4. PATIENT LOGIN
-# ==============================================================================
-elif st.session_state.page == "patient_login":
-    st.markdown("<div class='page-title'>Patient Login</div>", unsafe_allow_html=True)
-    st.markdown("<div class='page-subtitle'>Enter your mobile number and password</div>", unsafe_allow_html=True)
-    
-    with st.form("p_login_form"):
-        p_phone = st.text_input("Mobile Number", placeholder="")
-        p_pass = st.text_input("Password", type="password", placeholder="")
+    # If already logged in, show quick actions
+    if st.session_state.logged_patient:
+        pat = st.session_state.logged_patient
+        st.success(f"{get_text('msg_login_success', st.session_state.language)} **{pat.get('full_name')}** (ID: {pat.get('patient_id')})")
         
-        st.markdown("<br>", unsafe_allow_html=True)
-        login_btn = st.form_submit_button("Login", type="primary", use_container_width=True)
-        
-    if login_btn:
-        if not p_phone.strip():
-            st.error("Please enter your mobile number.")
-        elif not p_pass.strip():
-            st.error("Please enter your password.")
-        else:
-            patient_record = authenticate_patient(p_phone.strip(), p_pass.strip())
-            if patient_record:
-                st.session_state.logged_patient = patient_record
-                navigate_to("consultation_details")
-            else:
-                st.error("Invalid mobile number or password. If you are new, please create an account.")
+        c1, c2, c3 = st.columns(3, gap="medium")
+        with c1:
+            if st.button("🩺 Start New Consultation", type="primary", use_container_width=True):
+                navigate_to("patient_consent")
+        with c2:
+            if st.button("📋 View My Health Records (EHR)", use_container_width=True):
+                navigate_to("patient_ehr")
+        with c3:
+            if st.button("🚪 Logout", use_container_width=True):
+                st.session_state.logged_patient = None
+                navigate_to("home")
+    else:
+        tab_login, tab_reg = st.tabs([
+            get_text("auth_patient_login_tab", st.session_state.language),
+            get_text("auth_patient_reg_tab", st.session_state.language)
+        ])
+
+        with tab_login:
+            with st.form("patient_login_form"):
+                p_phone = st.text_input(get_text("lbl_phone", st.session_state.language), placeholder="9876543210")
+                p_pass = st.text_input(get_text("lbl_password", st.session_state.language), type="password")
+                submit_login = st.form_submit_button(get_text("btn_login", st.session_state.language), type="primary")
+
+                if submit_login:
+                    if not p_phone:
+                        st.error(get_text("lbl_phone_help", st.session_state.language))
+                    else:
+                        patient = db.authenticate_patient(p_phone, p_pass)
+                        if patient:
+                            st.session_state.logged_patient = patient
+                            st.session_state.language = patient.get("preferred_language", st.session_state.language)
+                            st.success(f"{get_text('msg_login_success', st.session_state.language)} {patient.get('full_name')}")
+                            time.sleep(0.5)
+                            navigate_to("patient_consent")
+                        else:
+                            st.error(get_text("msg_login_failed", st.session_state.language))
+
+        with tab_reg:
+            with st.form("patient_reg_form"):
+                r_name = st.text_input(get_text("lbl_full_name", st.session_state.language), placeholder="e.g. Ramesh Gowda")
+                c_a, c_g = st.columns(2)
+                with c_a:
+                    r_age = st.number_input(get_text("lbl_age", st.session_state.language), min_value=1, max_value=120, value=30)
+                with c_g:
+                    r_gender = st.selectbox(get_text("lbl_gender", st.session_state.language), ["Male", "Female", "Other"])
                 
-    st.markdown("<hr style='border: 0; border-top: 1px solid #D9E5EA; margin: 16px 0;'>", unsafe_allow_html=True)
-    st.write("Don't have an account?")
-    c_btn1, c_btn2 = st.columns(2)
-    with c_btn1:
-        if st.button("Create Account", key="p_login_to_create"):
-            navigate_to("patient_register")
-    with c_btn2:
-        if st.button("Back", key="p_login_back"):
-            navigate_to("patient_landing")
+                r_phone = st.text_input(get_text("lbl_phone", st.session_state.language), placeholder="10-digit mobile number")
+                r_loc = st.text_input(get_text("lbl_location", st.session_state.language), placeholder="Village / Town")
+                
+                langs = get_available_languages()
+                r_lang = st.selectbox(get_text("lbl_pref_lang", st.session_state.language), langs, index=langs.index(st.session_state.language) if st.session_state.language in langs else 0)
+                r_pass = st.text_input(get_text("lbl_password", st.session_state.language), type="password", help="Create a password for your health records.")
+
+                submit_reg = st.form_submit_button(get_text("btn_register", st.session_state.language), type="primary")
+
+                if submit_reg:
+                    if not r_name.strip():
+                        st.error("Please enter patient's full name.")
+                    elif not r_phone.strip() or len(r_phone.strip()) < 10:
+                        st.error("Please enter a valid 10-digit mobile number.")
+                    else:
+                        pid = db.register_patient_account(
+                            full_name=r_name,
+                            age=r_age,
+                            gender=r_gender,
+                            phone_number=r_phone,
+                            preferred_language=r_lang,
+                            location=r_loc,
+                            password=r_pass
+                        )
+                        st.session_state.logged_patient = db.get_patient_by_id(pid)
+                        st.session_state.language = r_lang
+                        st.success(f"{get_text('msg_reg_success', st.session_state.language)} **{pid}**")
+                        time.sleep(0.8)
+                        navigate_to("patient_consent")
+
+    if st.button("← " + get_text('btn_back_home', st.session_state.language), key="pat_portal_back"):
+        navigate_to("home")
 
 
 # ==============================================================================
-# 5. PATIENT REGISTRATION (Create Patient Account)
+# 5. PATIENT PRIVACY & INFORMED CONSENT
 # ==============================================================================
-elif st.session_state.page == "patient_register":
-    st.markdown("<div class='page-title'>Create Patient Account</div>", unsafe_allow_html=True)
-    st.markdown("<div class='page-subtitle'>Please enter your details below</div>", unsafe_allow_html=True)
+elif st.session_state.page == "patient_consent":
+    if not st.session_state.logged_patient:
+        navigate_to("patient_portal")
+
+    pat = st.session_state.logged_patient
+    st.markdown(f"<div class='hero-title'>{get_text('consent_title', st.session_state.language)}</div>", unsafe_allow_html=True)
     
-    with st.form("p_register_form"):
-        r_name = st.text_input("Full Name", placeholder="")
+    with st.container(border=True):
+        st.markdown(f"""
+        <p style='color: #475569; font-size: 0.95rem;'>
+            {get_text('consent_p1', st.session_state.language)}
+        </p>
+        <ul style='color: #334155; line-height: 1.7; font-size: 0.92rem;'>
+            <li>{get_text('consent_bullet1', st.session_state.language)}</li>
+            <li>{get_text('consent_bullet2', st.session_state.language)}</li>
+            <li>{get_text('consent_bullet3', st.session_state.language)}</li>
+        </ul>
+        """, unsafe_allow_html=True)
+
+        consent_check = st.checkbox(get_text("consent_checkbox", st.session_state.language), value=True)
         
-        col_a, col_g = st.columns(2)
-        with col_a:
-            r_age = st.text_input("Age", placeholder="")
-        with col_g:
-            r_gender = st.selectbox("Gender", options=["-- Select Gender --", "Male", "Female", "Other"])
+        if st.button(get_text("consent_btn_agree", st.session_state.language), type="primary", disabled=not consent_check):
+            navigate_to("symptom_entry")
+
+
+# ==============================================================================
+# 6. SYMPTOM ENTRY (TEXT & VOICE VIA OPENAI WHISPER)
+# ==============================================================================
+elif st.session_state.page == "symptom_entry":
+    if not st.session_state.logged_patient:
+        navigate_to("patient_portal")
+
+    pat = st.session_state.logged_patient
+    st.markdown(f"<div class='hero-title'>{get_text('symptom_title', st.session_state.language)}</div>", unsafe_allow_html=True)
+    st.markdown(f"<p class='hero-desc'>{get_text('symptom_desc', st.session_state.language)}</p>", unsafe_allow_html=True)
+
+    tab_txt, tab_voice = st.tabs([
+        get_text("tab_text_input", st.session_state.language),
+        get_text("tab_voice_input", st.session_state.language)
+    ])
+
+    with tab_voice:
+        st.markdown("#### 🎙️ Multilingual Voice Input (OpenAI Whisper)")
+        st.info("Speak clearly into your microphone in your preferred language (English, Hindi, Kannada, Telugu). Whisper will transcribe your voice into text.")
+        
+        audio_file = st.file_uploader("Upload audio recording (WAV/MP3/M4A/WebM) or use microphone:", type=["wav", "mp3", "m4a", "webm", "ogg"], key="audio_uploader")
+        
+        if audio_file is not None:
+            audio_bytes = audio_file.read()
+            st.audio(audio_bytes, format="audio/wav")
             
-        r_phone = st.text_input("Mobile Number", placeholder="")
-        r_loc = st.text_input("Village / Town", placeholder="")
-        r_lang = st.selectbox("Preferred Language", options=["English", "Hindi", "Kannada", "Telugu"])
+            if st.button("✨ Transcribe Audio with Whisper", type="primary", key="btn_whisper_transcribe"):
+                with st.spinner("Processing speech with OpenAI Whisper..."):
+                    res = transcribe_audio(audio_bytes, filename=audio_file.name, language=get_language_code(st.session_state.language))
+                    if res.get("success"):
+                        transcription = res.get("text", "")
+                        st.session_state.symptom_input_text = transcription
+                        st.success("✅ Voice transcribed successfully! You can review and edit below:")
+                    else:
+                        st.error(res.get("error"))
+
+    with tab_txt:
+        # Quick symptom helper chips
+        st.markdown(f"**{get_text('quick_symptoms_label', st.session_state.language)}**")
+        chip_cols = st.columns(4)
+        common_chips = [
+            ("fever", "Fever / बुखार / ಜ್ವರ"),
+            ("cough", "Cough / खांसी / ಕೆಮ್ಮು"),
+            ("headache", "Headache / सिरदर्द / ತಲೆನೋವು"),
+            ("cold", "Cold / सर्दी / ಶೀತ"),
+            ("body_pain", "Body Pain / बदन दर्द / ಮೈಕೈ ನೋವು"),
+            ("vomiting", "Vomiting / उल्टी / ವಾಂತಿ"),
+            ("abdominal_pain", "Stomach Pain / पेट दर्द / ಹೊಟ್ಟೆ ನೋವು"),
+            ("breathing_difficulty", "Breathing Issue / सांस तकलीफ / ಉಸಿರಾಟದ ತೊಂದರೆ")
+        ]
         
-        col_p1, col_p2 = st.columns(2)
-        with col_p1:
-            r_pass = st.text_input("Password", type="password", placeholder="")
-        with col_p2:
-            r_pass_conf = st.text_input("Confirm Password", type="password", placeholder="")
-            
-        st.markdown("<br>", unsafe_allow_html=True)
-        reg_btn = st.form_submit_button("Create Account", type="primary", use_container_width=True)
-        
-    if reg_btn:
-        if not r_name.strip():
-            st.error("Please enter your full name.")
-        elif not r_age.strip().isdigit() or not (1 <= int(r_age.strip()) <= 120):
-            st.error("Please enter a valid age between 1 and 120.")
-        elif r_gender == "-- Select Gender --":
-            st.error("Please select a gender.")
-        elif not r_phone.strip().isdigit() or len(r_phone.strip()) != 10:
-            st.error("Please enter a valid 10-digit mobile number.")
-        elif not r_pass.strip():
-            st.error("Please enter a password.")
-        elif r_pass != r_pass_conf:
-            st.error("Passwords do not match.")
-        else:
-            patient_id = register_patient_account(
-                full_name=r_name.strip(),
-                age=int(r_age.strip()),
-                gender=r_gender,
-                phone_number=r_phone.strip(),
-                preferred_language=r_lang,
-                location=r_loc.strip(),
-                password=r_pass.strip()
-            )
-            st.session_state.logged_patient = get_patient_by_id(patient_id)
-            navigate_to("patient_register_success")
-            
-    if st.button("Back", key="p_reg_back"):
-        navigate_to("patient_landing")
+        for idx, (sym_key, sym_label) in enumerate(common_chips):
+            col = chip_cols[idx % 4]
+            with col:
+                is_selected = sym_key in st.session_state.selected_symptom_chips
+                if st.button(f"{'✅ ' if is_selected else '+ '}{sym_label}", key=f"chip_{sym_key}", use_container_width=True):
+                    if is_selected:
+                        st.session_state.selected_symptom_chips.remove(sym_key)
+                    else:
+                        st.session_state.selected_symptom_chips.append(sym_key)
+                    st.rerun()
 
-
-# ==============================================================================
-# 6. PATIENT REGISTRATION SUCCESS
-# ==============================================================================
-elif st.session_state.page == "patient_register_success":
-    patient = st.session_state.logged_patient
-    if not patient:
-        navigate_to("patient_register")
-        st.stop()
-        
-    st.markdown("<div class='page-title'>Account created successfully.</div>", unsafe_allow_html=True)
-    st.markdown(f"""
-    <p style='color: #5F6F7F; font-size: 0.95rem; margin-top: 10px;'>
-        Your Patient ID is: <strong style='color: #1E3A5F; font-size: 1.15rem;'>{patient['patient_id']}</strong>
-    </p>
-    <div style='background-color: #FFFFFF; border: 1px solid #D9E5EA; border-radius: 4px; padding: 12px 16px; margin: 16px 0; font-size: 0.9rem; line-height: 1.5;'>
-        <strong>Name:</strong> {patient['full_name']}<br>
-        <strong>Age / Gender:</strong> {patient['age']} yrs / {patient['gender']}<br>
-        <strong>Contact:</strong> {patient['phone_number']}
-    </div>
-    """, unsafe_allow_html=True)
-    
-    if st.button("Continue", key="p_succ_cont", type="primary", use_container_width=True):
-        navigate_to("consultation_details")
-
-
-# ==============================================================================
-# 7. PATIENT CONSULTATION - SCREEN 1: PATIENT DETAILS
-# ==============================================================================
-elif st.session_state.page == "consultation_details":
-    patient = st.session_state.logged_patient
-    if not patient:
-        navigate_to("patient_login")
-        st.stop()
-        
-    st.markdown("""
-    <div class='consultation-stepper'>
-        <span class='step-current'>1. Patient Details</span> → <span>2. Symptoms</span> → <span>3. Preliminary Assessment</span> → <span>4. Doctor Consultation</span>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("<div class='page-title'>Patient Details</div>", unsafe_allow_html=True)
-    st.markdown("<div class='page-subtitle'>Confirm your details to proceed with the consultation</div>", unsafe_allow_html=True)
-    
-    st.markdown(f"""
-    <div style='background-color: #FFFFFF; border: 1px solid #D9E5EA; border-radius: 4px; padding: 16px; margin-bottom: 20px; font-size: 0.9rem; line-height: 1.6;'>
-        <strong>Patient ID:</strong> {patient['patient_id']}<br>
-        <strong>Full Name:</strong> {patient['full_name']}<br>
-        <strong>Age / Gender:</strong> {patient['age']} yrs / {patient['gender']}<br>
-        <strong>Mobile Number:</strong> {patient['phone_number']}<br>
-        <strong>Village / Town:</strong> {patient['location'] or 'Not specified'}<br>
-        <strong>Preferred Language:</strong> {patient['preferred_language']}
-    </div>
-    """, unsafe_allow_html=True)
-    
-    col_b, col_c = st.columns([1, 2])
-    with col_b:
-        if st.button("Back", key="c_det_back"):
-            navigate_to("patient_landing")
-    with col_c:
-        if st.button("Continue", key="c_det_cont", type="primary", use_container_width=True):
-            navigate_to("consultation_symptoms")
-
-
-# ==============================================================================
-# 8. PATIENT CONSULTATION - SCREEN 2: SYMPTOMS
-# ==============================================================================
-elif st.session_state.page == "consultation_symptoms":
-    patient = st.session_state.logged_patient
-    if not patient:
-        navigate_to("patient_login")
-        st.stop()
-        
-    st.markdown("""
-    <div class='consultation-stepper'>
-        <span class='step-past'>1. Patient Details</span> → <span class='step-current'>2. Symptoms</span> → <span>3. Preliminary Assessment</span> → <span>4. Doctor Consultation</span>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("<div class='page-title'>Symptoms</div>", unsafe_allow_html=True)
-    st.markdown("<div class='page-subtitle'>Please describe the symptoms you are currently experiencing.</div>", unsafe_allow_html=True)
-    
-    st.caption(f"Patient: **{patient['full_name']}** (ID: {patient['patient_id']})")
-    
-    symptom_text = st.text_area(
-        "Describe your symptoms:",
+    # Shared Symptom Description Textarea
+    st.markdown("---")
+    symptom_text_val = st.text_area(
+        get_text("transcribed_heading", st.session_state.language),
         value=st.session_state.symptom_input_text,
-        placeholder="Example: I have a high fever, dry cough, and headache since yesterday.",
-        height=140
+        height=130,
+        placeholder=get_text("lbl_text_placeholder", st.session_state.language),
+        key="symptom_text_area_input"
     )
-    st.session_state.symptom_input_text = symptom_text
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    col_b, col_c = st.columns([1, 2])
-    with col_b:
-        if st.button("Back", key="c_sym_back"):
-            navigate_to("consultation_details")
-    with col_c:
-        if st.button("Continue", key="c_sym_cont", type="primary", use_container_width=True):
-            if not symptom_text.strip():
-                st.error("Please enter your symptoms before continuing.")
+    st.session_state.symptom_input_text = symptom_text_val
+
+    col_sub1, col_sub2 = st.columns([6, 4])
+    with col_sub1:
+        if st.button(get_text("btn_submit_triage", st.session_state.language), type="primary", use_container_width=True):
+            if not st.session_state.symptom_input_text.strip() and not st.session_state.selected_symptom_chips:
+                st.error("Please describe or select at least one symptom to proceed.")
             else:
-                with st.spinner("Reviewing the information provided..."):
-                    # ML Inference
-                    prediction = predict_triage_priority(symptom_text=symptom_text.strip())
-                    
-                    # Store in SQLite
-                    consultation_id = create_consultation(
-                        patient_id=patient["patient_id"],
-                        symptoms_text=symptom_text.strip(),
-                        detected_symptoms=", ".join(prediction["detected_symptoms"]),
-                        triage_priority=prediction["predicted_priority"],
-                        triage_confidence=prediction["confidence_score"]
+                with st.spinner("Analyzing symptoms using Random Forest classifier..."):
+                    pred = predict_triage_priority(
+                        st.session_state.symptom_input_text,
+                        st.session_state.selected_symptom_chips
                     )
+                    st.session_state.last_prediction = pred
                     
-                    st.session_state.last_prediction = prediction
-                    st.session_state.current_consultation = get_consultation_by_id(consultation_id)
-                    navigate_to("consultation_assessment")
+                    # Create consultation in database
+                    detected_str = ", ".join(pred.get("detected_symptoms", []))
+                    cid = db.create_consultation(
+                        patient_id=pat["patient_id"],
+                        symptoms_text=st.session_state.symptom_input_text,
+                        detected_symptoms=detected_str,
+                        triage_priority=pred["predicted_priority"],
+                        triage_confidence=pred["confidence_score"],
+                        input_method="voice" if audio_file else "text",
+                        triage_metadata=pred
+                    )
+                    st.session_state.current_consultation_id = cid
+                    navigate_to("triage_assessment")
 
 
 # ==============================================================================
-# 9. PATIENT CONSULTATION - SCREEN 3: PRELIMINARY ASSESSMENT
+# 7. AI PRELIMINARY TRIAGE ASSESSMENT RESULT
 # ==============================================================================
-elif st.session_state.page == "consultation_assessment":
-    prediction = st.session_state.last_prediction
-    consultation = st.session_state.current_consultation
-    patient = st.session_state.logged_patient
-    
-    if not prediction or not consultation or not patient:
-        navigate_to("home")
-        st.stop()
-        
-    st.markdown("""
-    <div class='consultation-stepper'>
-        <span class='step-past'>1. Patient Details</span> → <span class='step-past'>2. Symptoms</span> → <span class='step-current'>3. Preliminary Assessment</span> → <span>4. Doctor Consultation</span>
+elif st.session_state.page == "triage_assessment":
+    if not st.session_state.last_prediction or not st.session_state.current_consultation_id:
+        navigate_to("symptom_entry")
+
+    pred = st.session_state.last_prediction
+    priority = pred["predicted_priority"]
+    conf = pred["confidence_score"]
+
+    st.markdown(f"<div class='hero-title'>{get_text('triage_title', st.session_state.language)}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='hero-subtitle'>{get_text('triage_subtitle', st.session_state.language)}</div>", unsafe_allow_html=True)
+
+    if pred.get("is_emergency"):
+        st.markdown(f"""
+        <div class='emergency-banner'>
+            🚨 {get_text('triage_emergency_alert', st.session_state.language)}
+        </div>
+        """, unsafe_allow_html=True)
+
+    with st.container(border=True):
+        badge_class = {
+            "Low Priority": "badge-low",
+            "Moderate Priority": "badge-moderate",
+            "High Priority": "badge-high",
+            "Urgent Attention": "badge-urgent"
+        }.get(priority, "badge-moderate")
+
+        st.markdown(f"""
+        <div style='margin-bottom: 12px;'>
+            <span style='font-size: 1.05rem; font-weight: 700;'>{get_text('triage_priority_label', st.session_state.language)}</span>
+            <span class='{badge_class}' style='font-size: 1.05rem; margin-left: 8px;'>{priority}</span>
+        </div>
+        <div style='font-size: 0.92rem; color: #475569; margin-bottom: 8px;'>
+            <strong>{get_text('triage_confidence_label', st.session_state.language)}</strong> {int(conf * 100)}%
+        </div>
+        <div style='font-size: 0.92rem; color: #475569; margin-bottom: 8px;'>
+            <strong>{get_text('triage_detected_label', st.session_state.language)}</strong> {', '.join(pred.get('detected_symptoms', []))}
+        </div>
+        <div style='font-size: 0.92rem; color: #475569; margin-bottom: 8px;'>
+            <strong>{get_text('triage_explanation_label', st.session_state.language)}</strong> {pred.get('explanation', '')}
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown(f"""
+    <div class='disclaimer-box'>
+        <strong>Clinical Safety Notice:</strong> {get_text('triage_disclaimer', st.session_state.language)}
     </div>
     """, unsafe_allow_html=True)
+
+    col_t1, col_t2 = st.columns([6, 4])
+    with col_t1:
+        if st.button(get_text("btn_proceed_waiting", st.session_state.language), type="primary", use_container_width=True):
+            navigate_to("waiting_room")
+    with col_t2:
+        if st.button("🔊 Read Out Results (Voice)", use_container_width=True):
+            tts_text = f"Your preliminary triage assessment is {priority}. An attending physician will consult with you shortly."
+            play_tts(tts_text)
+
+
+# ==============================================================================
+# 8. PATIENT WAITING ROOM & LIVE WEBRTC CALL
+# ==============================================================================
+elif st.session_state.page == "waiting_room":
+    if not st.session_state.current_consultation_id:
+        navigate_to("patient_portal")
+
+    cid = st.session_state.current_consultation_id
+    cns = db.get_consultation_by_id(cid)
+    pat = st.session_state.logged_patient or {}
+
+    st.markdown(f"<div class='hero-title'>{get_text('waiting_title', st.session_state.language)}</div>", unsafe_allow_html=True)
     
-    st.markdown("<div class='page-title'>Preliminary Assessment</div>", unsafe_allow_html=True)
-    
-    priority_level = prediction["predicted_priority"]
-    badge_cls = {
-        "Low Priority": "badge-low",
-        "Moderate Priority": "badge-moderate",
-        "High Priority": "badge-high",
-        "Urgent Attention": "badge-urgent"
-    }.get(priority_level, "badge-moderate")
-    
-    st.markdown(f"""
-    <div style='background-color: #FFFFFF; border: 1px solid #D9E5EA; border-radius: 4px; padding: 16px; margin: 16px 0;'>
+    with st.container(border=True):
+        st.markdown(f"""
         <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;'>
-            <div><strong>Patient ID:</strong> {patient['patient_id']}</div>
-            <div><span class='{badge_cls}'>{priority_level}</span></div>
+            <div>
+                <span style='font-size: 1.1rem; font-weight: 700;'>{get_text('waiting_token', st.session_state.language)}</span>
+                <span style='font-size: 1.2rem; font-weight: 800; color: #0284C7; margin-left: 8px;'>{cid}</span>
+            </div>
+            <div>
+                <span style='font-size: 0.9rem; color: #64748B;'>{get_text('waiting_status', st.session_state.language)}</span>
+                <span style='font-size: 0.95rem; font-weight: 700; color: #0F172A; margin-left: 6px;'>{cns.get('consultation_status', 'Waiting for doctor')}</span>
+            </div>
         </div>
-        <div style='margin-bottom: 8px; font-size: 0.9rem;'>
-            <strong>Symptoms:</strong> {consultation['symptoms_text']}
-        </div>
-        <div style='margin-bottom: 8px; font-size: 0.9rem;'>
-            <strong>Detected Symptoms:</strong> {', '.join(prediction['detected_symptoms'])}
-        </div>
-        <div style='font-size: 0.9rem;'>
-            <strong>Confidence:</strong> {prediction['confidence_score']*100:.0f}%
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div style='background-color: #EAF3F8; border: 1px solid #D9E3EA; border-left: 3px solid #2F6F95; border-radius: 4px; padding: 10px 14px; font-size: 0.85rem; color: #1E3A5F; margin-bottom: 20px;'>
-        This assessment is intended for preliminary decision support only and is not a medical diagnosis.
-    </div>
-    """, unsafe_allow_html=True)
-    
-    if st.button("Continue to Consultation", key="c_ass_cont", type="primary", use_container_width=True):
-        navigate_to("consultation_waiting")
+        <p style='color: #475569; font-size: 0.92rem;'>
+            {get_text('waiting_instructions', st.session_state.language)}
+        </p>
+        """, unsafe_allow_html=True)
 
+    # Check if prescription was completed
+    rx = db.get_prescription_by_consultation_id(cid)
+    if rx:
+        st.success("🎉 Consultation completed! Your digital prescription is ready below.")
+        with st.expander("📄 View My Digital Prescription", expanded=True):
+            html_doc = generate_prescription_html(rx, pat, {"full_name": rx.get("doctor_name", "Doctor"), "specialization": rx.get("specialization", "General Medicine"), "license_number": rx.get("license_number", "")})
+            st.components.v1.html(html_doc, height=520, scrolling=True)
+            st.download_button("📥 Download Prescription (HTML)", data=html_doc, file_name=f"Prescription_{cid}.html", mime="text/html")
+    else:
+        st.markdown("### 🎥 Live Video Consultation Room")
+        webrtc_html = render_webrtc_consultation(
+            room_id=cid,
+            user_role="patient",
+            user_name=pat.get("full_name", "Patient")
+        )
+        st.components.v1.html(webrtc_html, height=520)
 
-# ==============================================================================
-# 10. PATIENT CONSULTATION - SCREEN 4: DOCTOR CONSULTATION / WAITING
-# ==============================================================================
-elif st.session_state.page == "consultation_waiting":
-    consultation = st.session_state.current_consultation
-    patient = st.session_state.logged_patient
-    
-    if not consultation or not patient:
-        navigate_to("home")
-        st.stop()
-        
-    latest_record = get_consultation_by_id(consultation["consultation_id"])
-    
-    st.markdown("""
-    <div class='consultation-stepper'>
-        <span class='step-past'>1. Patient Details</span> → <span class='step-past'>2. Symptoms</span> → <span class='step-past'>3. Preliminary Assessment</span> → <span class='step-current'>4. Doctor Consultation</span>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("<div class='page-title'>Doctor Consultation</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #607080; font-size: 0.95rem; margin-bottom: 14px;'>Your information has been submitted for doctor review.</p>", unsafe_allow_html=True)
-    
-    st.markdown(f"""
-    <div style='background-color: #FFFFFF; border: 1px solid #D9E3EA; border-radius: 4px; padding: 20px; margin: 16px 0; text-align: left; font-size: 0.92rem; line-height: 1.6;'>
-        <strong>Patient ID:</strong> {patient['patient_id']}<br>
-        <strong>Patient Name:</strong> {patient['full_name']}<br>
-        <strong>Priority:</strong> {latest_record['triage_priority']}<br>
-        <strong>Status:</strong> <span style='color: #1E3A5F; font-weight: 600;'>{latest_record['consultation_status']}</span>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    col_w1, col_w2 = st.columns(2)
+    col_w1, col_w2 = st.columns([1, 1])
     with col_w1:
-        if st.button("Refresh Status", key="c_wait_ref", use_container_width=True):
+        if st.button("🔄 " + get_text("btn_refresh_status", st.session_state.language), use_container_width=True):
             st.rerun()
     with col_w2:
-        if st.button("Return to Home", key="c_wait_home", type="primary", use_container_width=True):
-            st.session_state.symptom_input_text = ""
-            st.session_state.current_consultation = None
-            st.session_state.last_prediction = None
-            navigate_to("home")
+        if st.button("📋 " + get_text("nav_ehr", st.session_state.language), use_container_width=True):
+            navigate_to("patient_ehr")
 
 
 # ==============================================================================
-# 11. DOCTOR LANDING (Login or Create Account)
+# 9. PATIENT ELECTRONIC HEALTH RECORD (EHR) HISTORY
 # ==============================================================================
-elif st.session_state.page == "doctor_landing":
-    st.markdown("<div class='page-title'>Doctor</div>", unsafe_allow_html=True)
-    st.markdown("<div class='page-subtitle'>Please choose an option to access the Doctor Portal</div>", unsafe_allow_html=True)
+elif st.session_state.page == "patient_ehr":
+    if not st.session_state.logged_patient:
+        navigate_to("patient_portal")
+
+    pat = st.session_state.logged_patient
+    pid = pat["patient_id"]
+    ehr_data = get_complete_patient_history(pid)
+
+    st.markdown(f"<div class='hero-title'>{get_text('ehr_title', st.session_state.language)}</div>", unsafe_allow_html=True)
     
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Login", key="d_land_login", type="primary", use_container_width=True):
-            navigate_to("doctor_login")
-    with col2:
-        if st.button("Create Account", key="d_land_create", type="secondary", use_container_width=True):
-            navigate_to("doctor_register")
-            
-    st.markdown("<br><hr style='border: 0; border-top: 1px solid #D9E5EA;'>", unsafe_allow_html=True)
-    if st.button("Back to Home", key="d_land_back"):
+    with st.container(border=True):
+        st.markdown(f"""
+        **Patient Name:** {pat.get('full_name')} &nbsp;|&nbsp; 
+        **Patient ID:** `{pid}` &nbsp;|&nbsp; 
+        **Age / Gender:** {pat.get('age')} Yrs / {pat.get('gender')} &nbsp;|&nbsp; 
+        **Location:** {pat.get('location') or 'Not specified'}
+        """)
+
+    st.markdown(f"<div class='section-label'>{get_text('ehr_past_consultations', st.session_state.language)}</div>", unsafe_allow_html=True)
+    consultations = ehr_data.get("consultations", [])
+
+    if not consultations:
+        st.info(get_text("ehr_no_records", st.session_state.language))
+    else:
+        for idx, cns in enumerate(consultations, 1):
+            with st.expander(f"Consultation {cns.get('consultation_id')} - {cns.get('created_at')} ({cns.get('triage_priority')})", expanded=(idx == 1)):
+                st.markdown(f"""
+                - **Symptoms Reported:** {cns.get('symptoms_text')}
+                - **Detected Clinical Markers:** {cns.get('detected_symptoms')}
+                - **Triage Urgency:** `{cns.get('triage_priority')}` (Confidence: {int(float(cns.get('triage_confidence', 0.8)) * 100)}%)
+                - **Attending Doctor:** {cns.get('doctor_name') or 'Pending Assignment'}
+                - **Doctor Observations:** {cns.get('doctor_observations') or cns.get('doctor_notes') or 'No notes logged.'}
+                """)
+                
+                if cns.get("prescription"):
+                    rx = cns["prescription"]
+                    st.markdown("**Prescribed Medications:**")
+                    for med in rx.get("items", []):
+                        st.markdown(f"• **{med.get('medicine_name')}** - {med.get('dosage')}, {med.get('frequency')} for {med.get('duration')} *({med.get('instructions')})*")
+
+    if st.button("← " + get_text("btn_back_home", st.session_state.language)):
         navigate_to("home")
 
 
 # ==============================================================================
-# 12. DOCTOR LOGIN
-# ==============================================================================
-elif st.session_state.page == "doctor_login":
-    st.markdown("<div class='page-title'>Doctor Login</div>", unsafe_allow_html=True)
-    st.markdown("<div class='page-subtitle'>Enter your Doctor ID / Email and password</div>", unsafe_allow_html=True)
-    
-    with st.form("d_login_form"):
-        d_id = st.text_input("Doctor ID / Email", placeholder="")
-        d_pass = st.text_input("Password", type="password", placeholder="")
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        doc_login_btn = st.form_submit_button("Login", type="primary", use_container_width=True)
-        
-    if doc_login_btn:
-        if not d_id.strip():
-            st.error("Please enter your Doctor ID or Email.")
-        elif not d_pass.strip():
-            st.error("Please enter your password.")
-        else:
-            doctor_record = authenticate_doctor(d_id.strip(), d_pass.strip())
-            if doctor_record:
-                st.session_state.logged_doctor = doctor_record
-                navigate_to("doctor_portal")
-            else:
-                st.error("Invalid credentials. Please verify your Doctor ID/Email and password.")
-                
-    st.markdown("<hr style='border: 0; border-top: 1px solid #D9E5EA; margin: 16px 0;'>", unsafe_allow_html=True)
-    st.write("Don't have an account?")
-    d_btn1, d_btn2 = st.columns(2)
-    with d_btn1:
-        if st.button("Create Account", key="d_login_to_create"):
-            navigate_to("doctor_register")
-    with d_btn2:
-        if st.button("Back", key="d_login_back"):
-            navigate_to("doctor_landing")
-
-
-# ==============================================================================
-# 13. DOCTOR REGISTRATION (Create Doctor Account)
-# ==============================================================================
-elif st.session_state.page == "doctor_register":
-    st.markdown("<div class='page-title'>Create Doctor Account</div>", unsafe_allow_html=True)
-    st.markdown("<div class='page-subtitle'>Please enter your professional details below</div>", unsafe_allow_html=True)
-    
-    with st.form("d_register_form"):
-        dr_name = st.text_input("Full Name", placeholder="")
-        dr_email = st.text_input("Email", placeholder="")
-        dr_id = st.text_input("Doctor ID (Optional)", placeholder="e.g. DOC-102")
-        dr_phone = st.text_input("Phone Number", placeholder="")
-        
-        col_p1, col_p2 = st.columns(2)
-        with col_p1:
-            dr_pass = st.text_input("Password", type="password", placeholder="")
-        with col_p2:
-            dr_pass_conf = st.text_input("Confirm Password", type="password", placeholder="")
-            
-        st.markdown("<br>", unsafe_allow_html=True)
-        dr_reg_btn = st.form_submit_button("Create Doctor Account", type="primary", use_container_width=True)
-        
-    if dr_reg_btn:
-        if not dr_name.strip():
-            st.error("Please enter your full name.")
-        elif not dr_email.strip() or "@" not in dr_email:
-            st.error("Please enter a valid email address.")
-        elif not dr_phone.strip().isdigit() or len(dr_phone.strip()) != 10:
-            st.error("Please enter a valid 10-digit phone number.")
-        elif not dr_pass.strip():
-            st.error("Please enter a password.")
-        elif dr_pass != dr_pass_conf:
-            st.error("Passwords do not match.")
-        else:
-            doc_id_val = register_doctor_account(
-                full_name=dr_name.strip(),
-                email=dr_email.strip(),
-                doctor_id=dr_id.strip(),
-                phone_number=dr_phone.strip(),
-                password=dr_pass.strip()
-            )
-            st.session_state.logged_doctor = {"doctor_id": doc_id_val, "full_name": dr_name.strip(), "email": dr_email.strip()}
-            navigate_to("doctor_register_success")
-            
-    if st.button("Back", key="dr_reg_back"):
-        navigate_to("doctor_landing")
-
-
-# ==============================================================================
-# 14. DOCTOR REGISTRATION SUCCESS
-# ==============================================================================
-elif st.session_state.page == "doctor_register_success":
-    doctor = st.session_state.logged_doctor
-    if not doctor:
-        navigate_to("doctor_register")
-        st.stop()
-        
-    st.markdown("<div class='page-title'>Doctor account created successfully.</div>", unsafe_allow_html=True)
-    st.markdown(f"""
-    <p style='color: #607080; font-size: 0.95rem; margin-top: 10px;'>
-        Doctor ID: <strong style='color: #1E3A5F;'>{doctor['doctor_id']}</strong> ({doctor['full_name']})
-    </p>
-    """, unsafe_allow_html=True)
-    
-    if st.button("Continue to Doctor Portal", key="d_succ_cont", type="primary", use_container_width=True):
-        navigate_to("doctor_portal")
-
-
-# ==============================================================================
-# 15. DOCTOR PORTAL (Dedicated View After Login)
+# 10. DOCTOR PORTAL (LOGIN & REGISTRATION)
 # ==============================================================================
 elif st.session_state.page == "doctor_portal":
-    doctor = st.session_state.logged_doctor
-    if not doctor:
-        st.info("Doctor authentication required.")
-        col_l1, col_l2 = st.columns([1, 4])
-        with col_l1:
-            if st.button("Go to Doctor Login", type="primary"):
-                navigate_to("doctor_login")
-        st.stop()
-        
-    col_d_title, col_d_logout = st.columns([4, 1])
-    with col_d_title:
-        st.markdown(f"<div class='page-title'>Doctor Portal</div>", unsafe_allow_html=True)
-        st.caption(f"Logged in as: **{doctor['full_name']}** (ID: {doctor['doctor_id']})")
-    with col_d_logout:
-        if st.button("Logout", key="doc_logout_btn"):
-            st.session_state.logged_doctor = None
-            navigate_to("home")
-            
-    all_cases = get_all_consultations()
+    st.markdown(f"<div class='hero-title'>{get_text('doctor_auth_title', st.session_state.language)}</div>", unsafe_allow_html=True)
     
-    tab_queue, tab_case, tab_metrics = st.tabs([
-        "Patient Queue",
-        "Patient Case Details",
-        "Model Performance"
+    if st.session_state.logged_doctor:
+        doc = st.session_state.logged_doctor
+        st.success(f"Logged in as **{doc.get('full_name')}** ({doc.get('specialization')})")
+        if st.button("Go to Doctor Dashboard →", type="primary"):
+            navigate_to("doctor_dashboard")
+    else:
+        tab_d_login, tab_d_reg = st.tabs([
+            get_text("doctor_login_tab", st.session_state.language),
+            get_text("doctor_reg_tab", st.session_state.language)
+        ])
+
+        with tab_d_login:
+            with st.form("doctor_login_form"):
+                d_id = st.text_input(get_text("lbl_doctor_id", st.session_state.language), value="doctor@kiosk.in")
+                d_pass = st.text_input(get_text("lbl_password", st.session_state.language), type="password", value="doctor123")
+                submit_doc_login = st.form_submit_button(get_text("btn_login", st.session_state.language), type="primary")
+
+                if submit_doc_login:
+                    doctor = db.authenticate_doctor(d_id, d_pass)
+                    if doctor:
+                        st.session_state.logged_doctor = doctor
+                        st.success(f"Welcome back, {doctor.get('full_name')}!")
+                        time.sleep(0.5)
+                        navigate_to("doctor_dashboard")
+                    else:
+                        st.error("Invalid Doctor credentials. Please check ID/Email and password.")
+
+        with tab_d_reg:
+            with st.form("doctor_reg_form"):
+                dr_name = st.text_input(get_text("lbl_full_name", st.session_state.language), placeholder="Dr. Firstname Lastname")
+                dr_email = st.text_input(get_text("lbl_email", st.session_state.language), placeholder="doctor@health.gov.in")
+                dr_spec = st.text_input(get_text("lbl_specialization", st.session_state.language), placeholder="General Medicine / Primary Care")
+                dr_lic = st.text_input(get_text("lbl_license_no", st.session_state.language), placeholder="MCI-123456")
+                dr_phone = st.text_input(get_text("lbl_phone", st.session_state.language), placeholder="10-digit mobile number")
+                dr_pass = st.text_input(get_text("lbl_password", st.session_state.language), type="password")
+
+                submit_doc_reg = st.form_submit_button(get_text("btn_register", st.session_state.language), type="primary")
+
+                if submit_doc_reg:
+                    if not dr_name.strip() or not dr_email.strip():
+                        st.error("Please fill all required doctor registration fields.")
+                    else:
+                        new_doc_id = db.register_doctor_account(
+                            full_name=dr_name,
+                            email=dr_email,
+                            doctor_id="",
+                            phone_number=dr_phone,
+                            password=dr_pass,
+                            specialization=dr_spec,
+                            license_number=dr_lic
+                        )
+                        st.session_state.logged_doctor = db.get_doctor_by_id(new_doc_id)
+                        st.success(f"Doctor registration successful! Doctor ID: **{new_doc_id}**")
+                        time.sleep(0.8)
+                        navigate_to("doctor_dashboard")
+
+    if st.button("← " + get_text('btn_back_home', st.session_state.language), key="doc_portal_back"):
+        navigate_to("home")
+
+
+# ==============================================================================
+# 11. DOCTOR TELEMEDICINE DASHBOARD & QUEUE
+# ==============================================================================
+elif st.session_state.page == "doctor_dashboard":
+    if not st.session_state.logged_doctor:
+        navigate_to("doctor_portal")
+
+    doc = st.session_state.logged_doctor
+    st.markdown(f"<div class='hero-title'>{get_text('doc_dash_title', st.session_state.language)}</div>", unsafe_allow_html=True)
+    st.markdown(f"**Attending Physician:** {doc.get('full_name')} &nbsp;|&nbsp; **Specialization:** {doc.get('specialization')} &nbsp;|&nbsp; **ID:** `{doc.get('doctor_id')}`")
+
+    # Metrics Row
+    stats = db.get_queue_summary_stats()
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Total Patients", stats.get("total_patients", 0))
+    m2.metric("Waiting in Queue", stats.get("waiting", 0))
+    m3.metric("Under Consultation", stats.get("in_progress", 0))
+    m4.metric("Completed", stats.get("completed", 0))
+
+    tab_q, tab_comp, tab_metrics = st.tabs([
+        get_text("doc_queue_tab", st.session_state.language),
+        get_text("doc_completed_tab", st.session_state.language),
+        get_text("doc_model_tab", st.session_state.language)
     ])
-    
-    # --- TAB 1: PATIENT QUEUE ---
-    with tab_queue:
-        if not all_cases:
-            st.info("No registered patients found in the database.")
-        else:
-            col_f, col_r = st.columns([3, 1])
-            with col_f:
-                filter_choice = st.selectbox(
-                    "Filter by status:",
-                    options=["All", "Waiting for doctor consultation", "Under consultation", "Completed"]
-                )
-            with col_r:
-                st.write("")
-                st.write("")
-                if st.button("Refresh Queue", key="doc_portal_ref", use_container_width=True):
-                    st.rerun()
-                    
-            filtered_cases = all_cases if filter_choice == "All" else [c for c in all_cases if c["consultation_status"] == filter_choice]
-            
-            queue_records = []
-            for c in filtered_cases:
-                queue_records.append({
-                    "Patient ID": c["patient_id"],
-                    "Name": c["full_name"],
-                    "Age/Sex": f"{c['age']}/{c['gender']}",
-                    "Language": c["preferred_language"],
-                    "Priority": c["triage_priority"],
-                    "Confidence": f"{c['triage_confidence']*100:.0f}%",
-                    "Status": c["consultation_status"],
-                    "Registered Time": c["created_at"]
-                })
-                
-            df_table = pd.DataFrame(queue_records)
-            st.dataframe(df_table, use_container_width=True, hide_index=True)
-            
-            st.markdown("<hr style='border: 0; border-top: 1px solid #D9E5EA; margin: 16px 0;'>", unsafe_allow_html=True)
-            
-            st.write("**Select a patient case to review:**")
-            case_mapping = {f"{c['patient_id']} - {c['full_name']} ({c['triage_priority']}) [{c['consultation_status']}]": c["consultation_id"] for c in all_cases}
-            selected_label = st.selectbox("Select patient:", options=list(case_mapping.keys()), label_visibility="collapsed")
-            
-            if st.button("Open Case Details", key="doc_open_case", type="primary"):
-                st.session_state.selected_doctor_case = case_mapping[selected_label]
-                st.rerun()
 
-    # --- TAB 2: PATIENT CASE DETAILS ---
-    with tab_case:
-        selected_cid = st.session_state.selected_doctor_case
-        if not selected_cid and all_cases:
-            selected_cid = all_cases[0]["consultation_id"]
-            
-        if not selected_cid:
-            st.info("Select a patient from the Queue tab to view case details.")
-        else:
-            case_data = get_consultation_by_id(selected_cid)
-            if not case_data:
-                st.error("Patient record not found.")
-            else:
-                st.subheader(f"Patient: {case_data['full_name']} ({case_data['patient_id']})")
-                
-                c_info1, c_info2 = st.columns([3, 2])
-                with c_info1:
-                    st.markdown(f"""
-                    <div style="border: 1px solid #D9E5EA; border-radius: 4px; padding: 14px; background-color: #FFFFFF; margin-bottom: 14px;">
-                        <div><strong>Age:</strong> {case_data['age']} | <strong>Gender:</strong> {case_data['gender']} | <strong>Phone:</strong> {case_data['phone_number']}</div>
-                        <div><strong>Language:</strong> {case_data['preferred_language']} | <strong>Location:</strong> {case_data['location'] or 'Not specified'}</div>
-                        <hr style='border: 0; border-top: 1px solid #D9E5EA; margin: 8px 0;'>
-                        <div><strong>Reported Symptoms:</strong><br><span style="color: #5F6F7F;">{case_data['symptoms_text']}</span></div>
-                        <div style="margin-top: 6px;"><strong>Detected Symptoms:</strong><br><code>{case_data['detected_symptoms']}</code></div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                with c_info2:
-                    triage_tag = {
-                        "Low Priority": "badge-low",
-                        "Moderate Priority": "badge-moderate",
-                        "High Priority": "badge-high",
-                        "Urgent Attention": "badge-urgent"
-                    }.get(case_data["triage_priority"], "badge-moderate")
-                    
-                    st.markdown(f"""
-                    <div style="border: 1px solid #D9E5EA; border-radius: 4px; padding: 14px; background-color: #FFFFFF; margin-bottom: 14px;">
-                        <div><strong>Triage Priority:</strong></div>
-                        <div class="{triage_tag}" style="margin: 6px 0 10px 0;">{case_data['triage_priority']}</div>
-                        <div><strong>Confidence:</strong> {case_data['triage_confidence']*100:.0f}%</div>
-                        <div style="margin-top: 6px;"><strong>Status:</strong> <code>{case_data['consultation_status']}</code></div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    if case_data["consultation_status"] != "Under consultation":
-                        if st.button("Mark as Under Consultation", key="btn_under_cons", type="primary", use_container_width=True):
-                            update_consultation_status(case_data["consultation_id"], "Under consultation")
-                            st.rerun()
-                            
-                    if case_data["consultation_status"] != "Completed":
-                        if st.button("Mark as Completed", key="btn_mark_comp", use_container_width=True):
-                            update_consultation_status(case_data["consultation_id"], "Completed")
-                            st.rerun()
-
-                st.write("**Doctor Consultation Notes:**")
-                clinical_notes = st.text_area(
-                    "Doctor notes:",
-                    value=case_data.get("doctor_notes", ""),
-                    height=90,
-                    key=f"doc_notes_{case_data['consultation_id']}",
-                    label_visibility="collapsed"
-                )
-                if st.button("Save Notes", key="save_notes_btn", type="primary"):
-                    update_doctor_notes(case_data["consultation_id"], clinical_notes)
-                    st.success("Doctor notes saved successfully.")
-
-    # --- TAB 3: MODEL PERFORMANCE ---
-    with tab_metrics:
-        st.write("### Model Training & Evaluation Metrics")
-        st.caption("Random Forest Classifier trained on symptom dataset (data/symptoms.csv)")
+    with tab_q:
+        all_cases = db.get_all_consultations()
+        waiting_cases = [c for c in all_cases if c.get("consultation_status") != "Completed"]
         
+        if not waiting_cases:
+            st.info("No patients currently waiting in the queue.")
+        else:
+            for cns in waiting_cases:
+                cid = cns.get("consultation_id")
+                priority = cns.get("triage_priority", "Moderate Priority")
+                
+                badge_class = {
+                    "Low Priority": "badge-low",
+                    "Moderate Priority": "badge-moderate",
+                    "High Priority": "badge-high",
+                    "Urgent Attention": "badge-urgent"
+                }.get(priority, "badge-moderate")
+
+                with st.container(border=True):
+                    c_h1, c_h2 = st.columns([7, 3])
+                    with c_h1:
+                        st.markdown(f"""
+                        <div style='display: flex; align-items: center; gap: 8px;'>
+                            <span style='font-size: 1.05rem; font-weight: 700;'>{cns.get('patient_name')}</span>
+                            <span style='color: #64748B; font-size: 0.88rem;'>({cns.get('age')} Y, {cns.get('gender')})</span>
+                            <span class='{badge_class}'>{priority}</span>
+                        </div>
+                        <div style='font-size: 0.88rem; color: #475569; margin-top: 4px;'>
+                            <strong>Token:</strong> <code>{cid}</code> | <strong>Location:</strong> {cns.get('location') or 'Rural Outpost'} | <strong>Time:</strong> {cns.get('created_at')}
+                        </div>
+                        <div style='font-size: 0.9rem; color: #334155; margin-top: 4px;'>
+                            <strong>Symptoms:</strong> {cns.get('symptoms_text')}
+                        </div>
+                        """, unsafe_allow_html=True)
+                    with c_h2:
+                        if st.button("Consult Patient 🩺", key=f"btn_consult_{cid}", type="primary", use_container_width=True):
+                            st.session_state.selected_doctor_case_id = cid
+                            db.update_consultation_status(cid, "Under consultation", doctor_id=doc.get("doctor_id"))
+                            navigate_to("doctor_consultation_room")
+
+    with tab_comp:
+        all_cases = db.get_all_consultations()
+        completed_cases = [c for c in all_cases if c.get("consultation_status") == "Completed"]
+        
+        if not completed_cases:
+            st.info("No completed consultations yet.")
+        else:
+            for cns in completed_cases:
+                cid = cns.get("consultation_id")
+                with st.expander(f"Case {cid} - {cns.get('patient_name')} ({cns.get('triage_priority')})"):
+                    st.markdown(f"""
+                    - **Patient:** {cns.get('patient_name')} (ID: {cns.get('patient_id')})
+                    - **Symptoms:** {cns.get('symptoms_text')}
+                    - **Doctor Observations:** {cns.get('doctor_observations') or cns.get('doctor_notes')}
+                    - **Completed Date:** {cns.get('completed_at') or cns.get('updated_at')}
+                    """)
+                    rx = db.get_prescription_by_consultation_id(cid)
+                    if rx:
+                        st.markdown("**Prescription Medicines:**")
+                        for m in rx.get("items", []):
+                            st.markdown(f"• {m.get('medicine_name')} - {m.get('dosage')} ({m.get('frequency')})")
+
+    with tab_metrics:
+        st.markdown("#### 📊 Supervised Random Forest Classifier Transparency Report")
         metrics_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", "model_metrics.json")
         if os.path.exists(metrics_file):
             with open(metrics_file, "r") as f:
-                metrics_dict = json.load(f)
-                
-            m1, m2, m3, m4 = st.columns(4)
-            with m1:
-                st.metric("Accuracy", f"{metrics_dict.get('holdout_test_accuracy', 'N/A')}%")
-            with m2:
-                st.metric("F1 Score", f"{metrics_dict.get('holdout_weighted_f1', 'N/A')}%")
-            with m3:
-                st.metric("Precision", f"{metrics_dict.get('holdout_weighted_precision', 'N/A')}%")
-            with m4:
-                st.metric("Recall", f"{metrics_dict.get('holdout_weighted_recall', 'N/A')}%")
-                
-            st.markdown(f"""
-            - **Cross-Validation Accuracy**: {metrics_dict.get('cross_val_accuracy_mean', 'N/A')}% ± {metrics_dict.get('cross_val_accuracy_std', 'N/A')}%
-            - **Dataset Samples**: {metrics_dict.get('dataset_samples', 'N/A')}
-            - **Evaluated Symptoms**: {', '.join(metrics_dict.get('features', []))}
-            - **Triage Classes**: {', '.join(metrics_dict.get('classes', []))}
-            """)
+                metrics_data = json.load(f)
+            
+            c_m1, c_m2, c_m3 = st.columns(3)
+            c_m1.metric("Holdout Test Accuracy", f"{metrics_data.get('holdout_test_accuracy')}%")
+            c_m2.metric("Cross-Validation Accuracy", f"{metrics_data.get('cross_val_accuracy_mean')}% ± {metrics_data.get('cross_val_accuracy_std')}%")
+            c_m3.metric("Weighted F1-Score", f"{metrics_data.get('holdout_weighted_f1')}%")
+
+            st.json(metrics_data)
         else:
-            st.info("Metrics file not found. Run python ml/train_model.py to generate.")
+            st.warning("Model metrics file not found. Run `python ml/train_model.py` to regenerate.")
+
+
+# ==============================================================================
+# 12. DOCTOR CONSULTATION WORKSPACE (WEBRTC + NOTES + PRESCRIPTION BUILDER)
+# ==============================================================================
+elif st.session_state.page == "doctor_consultation_room":
+    if not st.session_state.logged_doctor or not st.session_state.selected_doctor_case_id:
+        navigate_to("doctor_dashboard")
+
+    doc = st.session_state.logged_doctor
+    cid = st.session_state.selected_doctor_case_id
+    cns = db.get_consultation_by_id(cid)
+    pat = db.get_patient_by_id(cns["patient_id"])
+
+    st.markdown(f"<div class='hero-title'>{get_text('doc_consultation_title', st.session_state.language)}: {cns.get('patient_name')}</div>", unsafe_allow_html=True)
+    
+    # Patient Summary Card
+    with st.container(border=True):
+        st.markdown(f"""
+        <div style='display: flex; justify-content: space-between;'>
+            <div>
+                <strong>Patient:</strong> {pat.get('full_name')} (ID: <code>{pat.get('patient_id')}</code>) | 
+                <strong>Age/Gender:</strong> {pat.get('age')}Y / {pat.get('gender')} | 
+                <strong>Location:</strong> {pat.get('location')}
+            </div>
+            <div>
+                <strong>AI Triage:</strong> <span class='badge-urgent' style='padding: 2px 6px;'>{cns.get('triage_priority')}</span>
+            </div>
+        </div>
+        <div style='margin-top: 6px; font-size: 0.9rem; color: #334155;'>
+            <strong>Patient Symptoms:</strong> {cns.get('symptoms_text')}
+        </div>
+        """, unsafe_allow_html=True)
+
+    # 1. Live WebRTC Call Window
+    st.markdown("### 🎥 Live Video Consultation Feed")
+    webrtc_html = render_webrtc_consultation(
+        room_id=cid,
+        user_role="doctor",
+        user_name=doc.get("full_name", "Doctor")
+    )
+    st.components.v1.html(webrtc_html, height=520)
+
+    # 2. Clinical Notes & Observations
+    st.markdown("### 📝 Clinical Observations & Advice")
+    with st.form("doc_notes_form"):
+        c_comp = st.text_input(get_text("doc_complaint_lbl", st.session_state.language), value=cns.get("symptoms_text", ""))
+        c_obs = st.text_area(get_text("doc_notes_lbl", st.session_state.language), placeholder="Enter clinical observations, vital signs check, examination notes...")
+        c_adv = st.text_area(get_text("doc_advice_lbl", st.session_state.language), placeholder="Rest, hydration, dietary precautions...")
+        c_fol = st.text_input(get_text("doc_followup_lbl", st.session_state.language), placeholder="Follow up in 3 days if fever persists.")
+        save_notes_btn = st.form_submit_button("💾 Save Clinical Notes")
+        
+        if save_notes_btn:
+            db.update_doctor_notes(
+                consultation_id=cid,
+                notes=c_obs,
+                chief_complaint=c_comp,
+                observations=c_obs,
+                advice=c_adv,
+                followup=c_fol
+            )
+            st.success("Clinical notes saved successfully.")
+
+    # 3. Digital Prescription Builder
+    st.markdown(f"### 💊 {get_text('rx_builder_title', st.session_state.language)}")
+    
+    with st.container(border=True):
+        st.markdown("**Current Prescription Items:**")
+        for idx, med in enumerate(st.session_state.prescription_medicines):
+            st.markdown(f"{idx+1}. **{med.get('medicine_name')}** | {med.get('dosage')} | {med.get('frequency')} | {med.get('duration')} | *{med.get('instructions')}*")
+
+        # Form to add new medicine
+        with st.form("add_medicine_form"):
+            c_m1, c_m2 = st.columns(2)
+            with c_m1:
+                m_name = st.text_input(get_text("rx_medicine_name", st.session_state.language), placeholder="e.g. Amoxicillin 500mg")
+                m_dose = st.text_input(get_text("rx_dosage", st.session_state.language), value="1 tab")
+            with c_m2:
+                m_freq = st.text_input(get_text("rx_frequency", st.session_state.language), value="Twice daily after food")
+                m_dur = st.text_input(get_text("rx_duration", st.session_state.language), value="5 days")
+            m_inst = st.text_input(get_text("rx_instructions", st.session_state.language), placeholder="Take after meals")
+            
+            if st.form_submit_button(get_text("btn_add_medicine", st.session_state.language)):
+                if m_name.strip():
+                    st.session_state.prescription_medicines.append({
+                        "medicine_name": m_name,
+                        "dosage": m_dose,
+                        "frequency": m_freq,
+                        "duration": m_dur,
+                        "instructions": m_inst
+                    })
+                    st.success(f"Added {m_name} to prescription.")
+                    st.rerun()
+
+        # Complete consultation button
+        if st.button(get_text("btn_save_consultation", st.session_state.language), type="primary", use_container_width=True):
+            rx_id = db.create_prescription(
+                consultation_id=cid,
+                patient_id=pat["patient_id"],
+                doctor_id=doc["doctor_id"],
+                medicines=st.session_state.prescription_medicines,
+                general_notes=f"Chief Complaint: {c_comp}. Advice: {c_adv}. Followup: {c_fol}"
+            )
+            st.success(f"Prescription issued successfully! Rx ID: **{rx_id}**. Consultation marked as Completed.")
+            time.sleep(1.2)
+            navigate_to("doctor_dashboard")
+
+    if st.button("← " + get_text("btn_back_dashboard", st.session_state.language)):
+        navigate_to("doctor_dashboard")

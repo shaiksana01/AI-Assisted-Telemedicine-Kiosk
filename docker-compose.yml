@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  telemedicine-app:
+    build: .
+    container_name: telemedicine_kiosk
+    ports:
+      - "8501:8501"
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=replace-with-production-secret-key
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - DATABASE_URL=sqlite:///telemedicine.db
+    volumes:
+      - ./telemedicine.db:/app/telemedicine.db
+      - ./assets/audio_cache:/app/assets/audio_cache
+    restart: unless-stopped

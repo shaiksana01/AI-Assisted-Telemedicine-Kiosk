@@ -17,7 +17,9 @@ venv.bak/
 .env
 .env.*
 *.env
+!.env.example
 .streamlit/secrets.toml
+assets/audio_cache/
 
 # Operating System & IDE files
 .DS_Store

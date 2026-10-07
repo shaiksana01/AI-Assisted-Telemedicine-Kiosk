@@ -1,150 +1,277 @@
 # AI-Assisted Telemedicine Kiosk: A Multilingual and Voice-Enabled Healthcare System for Rural India
 
-> **Project Status: Current 50% Working Implementation (Phase 1 Milestone)**  
-> *Note: This repository contains the working Phase 1 (~50%) implementation of the college mini project. Core kiosk workflows, multilingual UI, patient/doctor authentication, triage ML pipeline, and queue management are fully implemented and functional. Advanced Phase 2 features (Voice STT, WebRTC video calling, IoT sensors, cloud sync) are planned for the subsequent development phase.*
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
+[![Framework](https://img.shields.io/badge/Frontend-Streamlit-FF4B4B.svg)](https://streamlit.io/)
+[![Backend](https://img.shields.io/badge/Backend-Flask%20REST%20API-000000.svg)](https://flask.palletsprojects.com/)
+[![ML Model](https://img.shields.io/badge/ML-Random%20Forest%20Classifier-green.svg)](https://scikit-learn.org/)
+[![WebRTC](https://img.shields.io/badge/Video-Encrypted%20WebRTC-orange.svg)](https://webrtc.org/)
+[![Database](https://img.shields.io/badge/Database-SQLite%20%2F%20MySQL%20(EHR)-blue.svg)](https://www.sqlite.org/)
 
 ---
 
 ## 1. Problem Statement
-Rural healthcare in India faces severe challenges due to the acute shortage of qualified doctors, language barriers, remote geographic locations, and delayed emergency identification. Patients often travel long distances for primary health consultations, while critical emergency cases (e.g., cardiopulmonary events or acute respiratory distress) remain untriaged until serious complications arise.
+Rural healthcare in India faces systemic challenges due to severe shortages of qualified medical practitioners in primary health centers (PHCs), acute language barriers across regional populations, geographic remoteness, and lack of systematic emergency triaging. Critical emergencies (such as acute myocardial events or severe respiratory distress) are frequently delayed, while routine ailments congest tertiary centers.
+
+---
 
 ## 2. Project Objectives
-* Provide an accessible, kiosk-based telemedicine entry point for rural populations.
-* Offer a multilingual interface supporting regional Indian languages (English, Hindi, Kannada, Telugu).
-* Implement machine learning-based preliminary triage to categorize patient urgency (Low Priority, Moderate Priority, High Priority, Urgent Attention) for doctor decision support.
-* Streamline doctor tele-consultations by organizing patient queues dynamically based on clinical priority.
-* Maintain modular design to allow scalable future integrations of speech recognition, encrypted video calls, and cloud synchronization.
+* **Accessible Outpost Kiosk**: Provide an accessible, touchscreen-friendly telemedicine entry point for rural communities.
+* **Multilingual Localization**: Full user interface and voice interaction across 4 Indian languages: **English**, **Hindi (हिंदी)**, **Kannada (ಕನ್ನಡ)**, and **Telugu (తెలుగు)**.
+* **Speech-Enabled Input (Whisper STT)**: Enable illiterate, elderly, and rural patients to record symptoms through natural speech.
+* **Clinical Decision-Support Triage (Random Forest)**: Categorize patient urgency (*Low Priority*, *Moderate Priority*, *High Priority*, *Urgent Attention*) with rule-based safety overrides for emergency conditions.
+* **Encrypted WebRTC Video Consultations**: Real-time peer-to-peer audio/video calling between rural kiosks and attending doctors.
+* **Structured Digital Prescriptions & Longitudinal EHR**: Generate printable prescriptions and maintain longitudinal Electronic Health Records.
+* **Voice Audio Guidance (TTS)**: Read out critical prompts, token numbers, and triage results via synthesized speech.
+* **AWS / Cloud Ready**: Modular architecture prepared for cloud deployment with MySQL database backend and RESTful APIs.
 
 ---
 
-## 3. Technology Stack (Phase 1 Prototype)
+## 3. System Architecture & End-to-End Workflow
 
-| Component | Technology | Description |
+```
+[ Rural Patient @ Kiosk ]
+         │
+         ├── 1. Language Selection (EN / HI / KN / TE)
+         ├── 2. Patient Registration / Login (Secure Password Hash)
+         ├── 3. Informed Clinical & Data Privacy Consent
+         ├── 4. Symptom Entry: Text or Voice (OpenAI Whisper STT)
+         ├── 5. Review & Confirm Transcribed Symptoms
+         │
+         ▼
+[ ML Decision-Support Engine ]
+         │
+         ├── Supervised Random Forest Classifier (16 Clinical Indicators)
+         ├── Emergency Red-Flag Safety Override (Chest pain, breathing distress, etc.)
+         ├── Output: Triage Urgency + Confidence + Explanations + Voice TTS Output
+         │
+         ▼
+[ Patient Waiting Room ] <──────────────┐
+         │                               │
+         ▼                               │ (Real-time Token & Queue State)
+[ Doctor Telemedicine Dashboard ]        │
+         │                               │
+         ├── Urgency-Prioritized Queue ──┘
+         ├── Patient Demographics & Complete EHR Trajectory
+         ├── Review AI Triage Recommendations (Decision Support Only)
+         ├── Initiate Encrypted WebRTC Video Call Room
+         ├── Log Clinical Observations, Advice & Chief Complaints
+         ├── Build Structured Multi-Item Digital Prescription
+         │
+         ▼
+[ Electronic Health Record (EHR) & Printable Prescription Output ]
+```
+
+---
+
+## 4. Technology Stack
+
+| Layer | Technology | Function |
 |---|---|---|
-| **Frontend / Web UI** | [Streamlit](https://streamlit.io/) | Interactive, accessible healthcare kiosk web application |
-| **Machine Learning** | [Scikit-learn](https://scikit-learn.org/) (`RandomForestClassifier`) | Decision-support preliminary urgency classification |
-| **Data Processing** | [Pandas](https://pandas.pydata.org/), [NumPy](https://numpy.org/) | Dataset preparation, feature extraction, and matrix handling |
-| **Database** | [SQLite3](https://www.sqlite.org/) | Relational database for patients, doctors, and consultations |
-| **Model Serialization** | [Joblib](https://joblib.readthedocs.io/) | Model persistence and loading |
-| **Multilingual Engine** | Custom Python dictionary (`utils/translations.py`) | Extensible localization engine (English, Hindi, Kannada, Telugu) |
-
----
-
-## 4. Scope Breakdown: Current Phase 1 vs. Planned Phase 2
-
-### ✅ Implemented in Current 50% Version (Phase 1)
-* **Kiosk Landing Page**: Multilingual portal, academic disclaimers, language selector, and dual authentication routing for Patients and Doctors.
-* **Multilingual Localization**: Complete interface localization across 4 regional languages: **English**, **Hindi (हिंदी)**, **Kannada (ಕನ್ನಡ)**, and **Telugu (తెలుగు)** with session persistence.
-* **Patient Registration & Login**: Registration capturing Name, Age, Gender, Phone Number, Preferred Language, and Location, stored securely in SQLite with unique Patient IDs (`PAT-YYYY-XXXX`).
-* **Symptom Input**: Free-form natural language text symptom entry with multilingual keyword feature extraction and interactive quick-symptom helper chips.
-* **Machine Learning Triage Model**:
-  - Supervised `RandomForestClassifier` trained on `data/symptoms.csv`.
-  - Binary feature extraction across 16 clinical symptom indicators.
-  - Returns classification into 4 triage levels (*Low Priority*, *Moderate Priority*, *High Priority*, *Urgent Attention*) with decision rationale.
-  - Quantitative evaluation metrics recorded in `models/model_metrics.json`.
-* **Clinical Safety Override Layer**: Rule-based emergency detection for critical conditions (chest pain, breathing difficulty, loss of consciousness, severe trauma) to ensure urgent cases receive top priority.
-* **Triage Result & Decision-Support Page**: Color-coded urgency badges, extracted clinical markers, confidence scores, and mandatory medical disclaimers.
-* **Patient Waiting Room**: Token display, live consultation status tracking, and queue guidance.
-* **Doctor Telemedicine Dashboard**:
-  - Live patient queue dynamically prioritized by clinical urgency (Urgent cases displayed first).
-  - Status filters (*All*, *Waiting for Doctor*, *Under Consultation*, *Completed*).
-  - Detailed patient case review and clinical symptom breakdown.
-  - Real-time consultation status updates (`Under Consultation`, `Completed`).
-  - Doctor clinical notes and prescription observation logging.
-  - Transparent ML model metrics and validation report viewer.
-
----
-
-### ⏳ Planned for Future Phase 2 (Remaining 50% Scope)
-* **Speech-to-Text (STT) Voice Pipeline**: Multilingual voice input (Whisper / Vosk) for illiterate and elderly rural patients.
-* **Real-time WebRTC Video Consultation**: Encrypted, low-bandwidth peer-to-peer audio/video calling between kiosk and attending doctor.
-* **Digital Prescription & SMS Dispatch**: Automated PDF prescription generation with doctor's digital signature and SMS delivery.
-* **Cloud Database Migration**: Migration from local SQLite to AWS RDS / MySQL with cloud synchronization across multiple rural kiosks.
-* **IoT Health Sensor Integration**: Hardware integration for pulse oximeter (SpO2), non-contact infrared thermometer, and automated blood pressure monitor.
-* **Electronic Health Records (EHR)**: Longitudinal medical history tracking with Aadhaar/ABHA health ID integration.
+| **Frontend / Kiosk UI** | [Streamlit](https://streamlit.io/) | Responsive, accessible, touchscreen-optimized healthcare interface |
+| **Backend REST API** | [Flask](https://flask.palletsprojects.com/) + [Flask-CORS](https://flask-cors.readthedocs.io/) | Modular RESTful API handling authentication, consultations, EHR, and signaling |
+| **Machine Learning** | [Scikit-learn](https://scikit-learn.org/) (`RandomForestClassifier`) | Preliminary triage care-priority decision support |
+| **Speech-to-Text (STT)** | [OpenAI Whisper](https://openai.com/research/whisper) | Multilingual audio transcription with text fallback |
+| **Text-to-Speech (TTS)** | [OpenAI TTS](https://platform.openai.com/docs/guides/text-to-speech) | Voice guidance and audio readouts with local caching |
+| **Live Video Calling** | [WebRTC](https://webrtc.org/) + STUN Signaling | Real-time, peer-to-peer audio and video consultation rooms |
+| **Database & EHR** | [SQLite3](https://www.sqlite.org/) / [MySQL](https://www.mysql.com/) + [SQLAlchemy](https://www.sqlalchemy.org/) | Relational database schema for patients, doctors, triage, prescriptions, and EHR |
+| **Data Processing** | [Pandas](https://pandas.pydata.org/), [NumPy](https://numpy.org/) | Clinical feature matrix extraction and dataset processing |
+| **Containerization** | [Docker](https://www.docker.com/) & [Docker Compose](https://docs.docker.com/compose/) | Production container packaging and cloud orchestration |
 
 ---
 
 ## 5. Machine Learning Approach & Transparency
 
-* **Dataset**: `data/symptoms.csv` — An educational prototype dataset with clinical symptom vectors across common primary care and emergency scenarios.
-* **Model**: `RandomForestClassifier` with balanced class weights and stratified evaluation.
-* **Clinical Safety Override**: High-risk emergency red flags (e.g., severe breathing difficulty, chest pain, loss of consciousness, severe bleeding) are passed through an algorithmic safety layer ensuring emergency cases receive top priority.
-* **Important Academic Disclaimer**: *The ML model provides algorithmic preliminary triage and decision-support only. It does NOT constitute a clinical diagnosis or replace a qualified medical practitioner.*
+### Model Architecture
+* **Algorithm**: `RandomForestClassifier` (`n_estimators=100`, `max_depth=6`, `class_weight='balanced'`).
+* **Input Features (16 Clinical Indicators)**: `fever`, `high_fever`, `cough`, `cold`, `headache`, `body_pain`, `fatigue`, `sore_throat`, `vomiting`, `diarrhea`, `abdominal_pain`, `dizziness`, `chest_pain`, `breathing_difficulty`, `loss_of_consciousness`, `severe_bleeding`.
+* **Output Urgency Categories**:
+  1. `Low Priority`: Mild, non-acute symptoms (cold, mild cough, slight fatigue).
+  2. `Moderate Priority`: Acute primary care complaints (fever with headache, gastroenteritis symptoms).
+  3. `High Priority`: Complex or high-temperature clusters requiring prompt review.
+  4. `Urgent Attention`: Immediate cardiopulmonary, neurological, or trauma red flags.
+
+### Performance Transparency & Evaluation Comparison
+* **Research Paper Benchmark (Prototype Target)**:
+  * Accuracy: 91.4%
+  * Precision: 89.8%
+  * Recall: 90.6%
+  * F1-Score: 90.2%
+* **Current Live Model Evaluation (Computed on `data/symptoms.csv`)**:
+  * Holdout Test Accuracy: **100.0%**
+  * Holdout Weighted F1-Score: **100.0%**
+  * 3-Fold Stratified Cross-Validation Accuracy: **96.67% ± 4.71%**
+
+> **Mandatory Clinical Disclaimer**: *The machine learning model functions strictly as an algorithmic decision-support tool to assist healthcare professionals in prioritizing consultation queues. It does NOT make formal medical diagnoses, prescribe medications, or replace certified medical practitioners.*
 
 ---
 
-## 6. Project Directory Structure
+## 6. Database Schema & EHR Design
+
+The database schema is normalized and supports both SQLite (local development) and MySQL (production/AWS RDS):
+
+1. **`patients`**: Stores patient ID (`PAT-YYYY-XXXX`), name, demographics, contact number, preferred language, and SHA-256 hashed credentials.
+2. **`doctors`**: Stores doctor ID (`DOC-YYYY-XXX`), specialization, medical license number, official email, phone, and hashed password.
+3. **`consultations`**: Tracks consultation ID (`CNS-YYYY-XXXX`), patient ID, assigned doctor ID, symptom text, triage priority, status (`Waiting for doctor consultation`, `Under consultation`, `Completed`), chief complaints, doctor clinical observations, advice, and timestamps.
+4. **`symptom_records`**: Archives raw patient inputs, input modality (`text` vs. `voice`), and detected clinical markers.
+5. **`triage_results`**: Persists feature vectors, probability distributions, safety override triggers, and model explanations.
+6. **`prescriptions`**: Header record for digital prescriptions (`RX-YYYY-XXXX`) linked to consultations, patients, and doctors.
+7. **`prescription_items`**: Structured line-item medications containing medicine name, dosage, frequency, duration, and specific instructions.
+
+---
+
+## 7. Project Directory Structure
 
 ```
 ai_telemedicine/
-├── .gitignore                  # Git ignore rules for virtualenvs, cache, etc.
-├── .streamlit/
-│   └── config.toml             # Streamlit theme & UI styling configuration
-├── assets/
-│   ├── telemedicine_hero.png   # Kiosk hero visual asset
-│   └── telemedicine_hero.jpg   # Image asset fallback
 ├── app.py                      # Main Streamlit kiosk & doctor application
 ├── requirements.txt            # Python dependencies
 ├── README.md                   # Project documentation
-├── test_system.py              # Automated test suite for database, ML & auth
-├── telemedicine.db             # SQLite database
-├── data/
-│   └── symptoms.csv            # Symptom dataset for triage model
-├── models/
+├── test_system.py              # Unified master automated test runner
+├── telemedicine.db             # Local relational SQLite database
+├── .env.example                # Environment variables template
+├── .gitignore                  # Git exclusion rules
+├── Dockerfile                  # Production container definition
+├── docker-compose.yml          # Container orchestration configuration
+│
+├── backend/                    # Flask REST API Service Layer
+│   ├── app.py                  # Flask application factory
+│   ├── config.py               # Environment configuration loader
+│   ├── auth/                   # Authentication & authorization service
+│   ├── database/               # SQLAlchemy engine, session & schema models
+│   ├── services/               # Consultation, prescription & EHR services
+│   ├── speech/                 # Whisper STT & OpenAI TTS service wrappers
+│   ├── webrtc/                 # WebRTC signaling session manager
+│   └── routes/                 # REST API blueprints (auth, triage, ehr, webrtc, etc.)
+│
+├── translations/               # Central JSON localization dictionaries
+│   ├── en.json                 # English
+│   ├── hi.json                 # Hindi (हिंदी)
+│   ├── kn.json                 # Kannada (ಕನ್ನಡ)
+│   └── te.json                 # Telugu (తెలుగు)
+│
+├── utils/                      # UI helpers & components
+│   ├── translations.py         # Dynamic translation loader & fallback
+│   └── webrtc_component.py     # Interactive WebRTC video room component
+│
+├── ml/                         # Machine Learning Pipeline
+│   ├── train_model.py          # Model training & metrics computation
+│   └── predict.py              # NLP feature extraction & inference engine
+│
+├── models/                     # Serialized Model Artifacts
 │   ├── triage_model.pkl        # Trained Random Forest classifier
-│   └── model_metrics.json      # Performance evaluation metrics
-├── ml/
-│   ├── __init__.py
-│   ├── train_model.py          # ML training and evaluation script
-│   └── predict.py              # Symptom NLP extraction & inference pipeline
-├── database/
-│   ├── __init__.py
-│   └── database.py             # SQLite database schema, auth, and CRUD operations
-└── utils/
-    ├── __init__.py
-    └── translations.py         # Multilingual UI localization dictionary
+│   └── model_metrics.json      # Evaluation metrics report
+│
+├── data/                       # Datasets
+│   └── symptoms.csv            # Prototype clinical symptoms dataset
+│
+├── assets/                     # Visual & Audio Assets
+│   ├── telemedicine_hero.jpg   # Rural kiosk visual asset
+│   └── audio_cache/            # Local synthesized TTS audio cache
+│
+└── tests/                      # Automated Verification Test Suite
+    ├── test_auth.py            # Authentication & role isolation tests
+    ├── test_database.py        # Database CRUD, prescription & EHR tests
+    ├── test_ml.py              # ML triage & safety override tests
+    ├── test_speech.py          # Whisper & TTS fallback tests
+    ├── test_webrtc.py          # WebRTC signaling session tests
+    ├── test_api.py             # Flask REST API integration tests
+    └── test_security.py        # Patient-Doctor & cross-EHR privacy tests
 ```
 
 ---
 
-## 7. How to Run the Project
+## 8. Installation & Setup Instructions
 
 ### Prerequisites
 * Python 3.10+ (tested on Python 3.13)
 * `pip` package manager
+* Virtual environment tool (`venv`)
 
-### Step 1: Set Up Virtual Environment & Install Dependencies
+### Step 1: Clone Repository
+```bash
+git clone https://github.com/shaiksana01/AI-Assisted-Telemedicine-Kiosk.git
+cd AI-Assisted-Telemedicine-Kiosk
+```
+
+### Step 2: Create Virtual Environment & Install Dependencies
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Step 2: Run Verification Test Suite
+### Step 3: Configure Environment Variables (Optional)
+```bash
+cp .env.example .env
+# Edit .env to add your OPENAI_API_KEY (optional for Whisper/TTS)
+```
+*(Note: If `OPENAI_API_KEY` is not provided, the application runs with full text fallback.)*
+
+### Step 4: Run System Verification Tests
 ```bash
 python test_system.py
 ```
 
-### Step 3: Train the ML Model (Optional - pre-trained model included)
-```bash
-python ml/train_model.py
-```
-
-### Step 4: Run the Streamlit Application
+### Step 5: Start the Streamlit Kiosk Application
 ```bash
 streamlit run app.py
 ```
+Access the application at `http://localhost:8501`.
 
-The application will open in your browser at `http://localhost:8501`.
+### Step 6: Start Flask REST API Server (Optional Backend Service)
+```bash
+python backend/app.py
+```
+Access the API endpoints at `http://localhost:5000/api/health`.
 
 ---
 
-## 8. Verification & Test Plan
-The system includes an automated test suite (`test_system.py`) covering:
-1. Multi-language switching and string retrieval (English, Hindi, Kannada, Telugu).
-2. Registration of new patient and doctor accounts with password hashing.
-3. Patient and doctor credential authentication.
-4. Natural text symptom input and keyword extraction.
-5. Real-time ML triage prediction and safety override tests.
-6. Doctor queue prioritization, consultation creation, and clinical note updates.
+## 9. Pre-Seeded Demonstration Accounts
+
+For ease of academic review and testing, a verified doctor account is pre-seeded in the database:
+
+* **Doctor Portal Credentials**:
+  * **Doctor ID / Email**: `doctor@kiosk.in` *(or `DOC-101`)*
+  * **Password**: `doctor123`
+  * **Doctor Name**: Dr. Arvind Sharma (General Medicine & Rural Health)
+
+* **Patient Portal**:
+  * Register any new patient with a 10-digit phone number or use an existing test account.
+
+---
+
+## 10. Cloud & AWS Deployment Architecture
+
+For production deployment on Amazon Web Services (AWS):
+
+1. **Frontend / Application Host**: AWS Elastic Container Service (ECS) with Fargate or AWS EC2 running the Docker container.
+2. **Database**: Amazon RDS for MySQL (Multi-AZ) with automated backups and encryption at rest (KMS).
+3. **Speech & AI**: OpenAI API endpoints via secure AWS Secrets Manager / Parameter Store.
+4. **Video Signaling & Media**: AWS EC2 running WebRTC signaling server with STUN/TURN relays (e.g., coturn).
+5. **Static Assets & Audio**: Amazon S3 + CloudFront CDN.
+
+```
+[ User Browser / Kiosk ]
+         │ (HTTPS / WSS)
+         ▼
+[ AWS Application Load Balancer (ALB) ]
+         ├──> [ Streamlit Web UI (ECS / EC2) ]
+         ├──> [ Flask REST API (ECS / EC2) ]
+         │
+         ├──> [ Amazon RDS (MySQL Database) ]
+         └──> [ OpenAI Whisper / TTS APIs ]
+```
+
+---
+
+## 11. Ethical, Privacy, and Safety Guidelines
+
+1. **Decision-Support Boundary**: The AI model is designed purely for preliminary decision support. It never renders diagnoses or autonomous treatment decisions.
+2. **Data Privacy**: Patient records and EHR data are segregated with role-based access control. Plaintext passwords are never stored.
+3. **Emergency Override**: Cardiopulmonary and critical neurological conditions bypass model thresholds to guarantee top queue priority.
+4. **Rural Accessibility**: Multilingual voice readouts ensure that patients with low digital or textual literacy can understand all instructions.
+
+---
+
+## 12. License
+Academic Mini-Project Prototype for Educational and Research Purposes.
