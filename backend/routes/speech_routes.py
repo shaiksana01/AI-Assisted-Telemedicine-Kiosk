@@ -22,6 +22,7 @@ def transcribe():
     return jsonify(result), status_code
 
 @speech_bp.route("/synthesize", methods=["POST"])
+@speech_bp.route("/tts", methods=["POST"])
 def synthesize():
     data = request.get_json() or {}
     text = data.get("text", "")
