@@ -19,7 +19,7 @@ LANGUAGE_MAPPING = {
 
 _loaded_translations: Dict[str, Dict[str, str]] = {}
 
-def load_all_translations():
+def load_all_translations() -> Dict[str, Dict[str, str]]:
     """Load translation JSON files from translations/ directory."""
     global _loaded_translations
     if _loaded_translations:
@@ -62,5 +62,47 @@ def get_available_languages() -> List[str]:
     return list(LANGUAGE_MAPPING.keys())
 
 def get_language_code(language_name: str) -> str:
-    """Return ISO language code."""
-    return LANGUAGE_MAPPING.get(language_name, "en")
+    """
+    Return 2-letter ISO language code (e.g., 'en', 'hi', 'kn', 'te').
+    Handles language names, localized labels, or existing codes gracefully.
+    """
+    if not language_name:
+        return "en"
+    
+    clean = str(language_name).strip().lower()
+    
+    # Direct mapping
+    lookup = {
+        "english": "en",
+        "en": "en",
+        "hindi": "hi",
+        "hi": "hi",
+        "hindi (हिंदी)": "hi",
+        "हिंदी": "hi",
+        "kannada": "kn",
+        "kn": "kn",
+        "kannada (ಕನ್ನಡ)": "kn",
+        "ಕನ್ನಡ": "kn",
+        "telugu": "te",
+        "te": "te",
+        "telugu (తెలుగు)": "te",
+        "తెలుగు": "te"
+    }
+    
+    if clean in lookup:
+        return lookup[clean]
+    
+    # Substring matching fallback
+    for name, code in LANGUAGE_MAPPING.items():
+        if name.lower() in clean or code in clean:
+            return code
+            
+    return "en"
+
+__all__ = [
+    "get_text",
+    "get_available_languages",
+    "get_language_code",
+    "load_all_translations",
+    "LANGUAGE_MAPPING"
+]
