@@ -6,13 +6,15 @@ Uses OpenAI TTS API for high quality voice prompts with local audio caching.
 import os
 import io
 import hashlib
-import requests
+import logging
 from typing import Optional, Tuple
+from dotenv import load_dotenv
+
+load_dotenv()
+logger = logging.getLogger(__name__)
 
 CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "assets", "audio_cache")
 os.makedirs(CACHE_DIR, exist_ok=True)
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 def synthesize_speech(text: str, voice: str = "alloy", language_code: str = "en") -> Tuple[Optional[bytes], Optional[str]]:
     """
@@ -36,11 +38,33 @@ def synthesize_speech(text: str, voice: str = "alloy", language_code: str = "en"
         except Exception:
             pass
 
-    api_key = os.getenv("OPENAI_API_KEY", OPENAI_API_KEY)
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
     if not api_key:
-        return None, "OpenAI API key not configured. Text display is active."
+        return None, "OpenAI API key not configured on server. Text display is active."
 
+    # 1. Try official OpenAI SDK client
     try:
+        from openai import OpenAI
+        client = OpenAI(api_key=api_key)
+        response = client.audio.speech.create(
+            model="tts-1",
+            voice=voice,
+            input=clean_text
+        )
+        audio_bytes = response.read()
+        if audio_bytes:
+            try:
+                with open(cache_path, "wb") as f:
+                    f.write(audio_bytes)
+            except Exception:
+                pass
+            return audio_bytes, None
+    except Exception as sdk_err:
+        logger.warning("OpenAI SDK TTS failed (%s), attempting HTTPS fallback.", sdk_err)
+
+    # 2. Resilient HTTPS fallback
+    try:
+        import requests
         url = "https://api.openai.com/v1/audio/speech"
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -56,7 +80,6 @@ def synthesize_speech(text: str, voice: str = "alloy", language_code: str = "en"
         response = requests.post(url, headers=headers, json=payload, timeout=20)
         if response.status_code == 200:
             audio_bytes = response.content
-            # Save to cache
             try:
                 with open(cache_path, "wb") as f:
                     f.write(audio_bytes)
@@ -64,6 +87,7 @@ def synthesize_speech(text: str, voice: str = "alloy", language_code: str = "en"
                 pass
             return audio_bytes, None
         else:
-            return None, f"TTS API error ({response.status_code}): {response.text}"
+            return None, f"TTS API error ({response.status_code})."
     except Exception as e:
         return None, f"TTS service unavailable: {str(e)}"
+

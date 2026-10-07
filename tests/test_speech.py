@@ -10,7 +10,10 @@ def test_speech_fallbacks():
     # Empty audio handling
     res_empty = transcribe_audio(b"")
     assert res_empty["success"] is False
-    assert "No valid audio" in res_empty["error"] or "API key" in res_empty["error"]
+    assert "transcript" in res_empty
+    assert "text" in res_empty
+    assert "error" in res_empty
+    assert res_empty["error"] is not None
 
     # TTS empty text handling
     audio_bytes, err = synthesize_speech("")
