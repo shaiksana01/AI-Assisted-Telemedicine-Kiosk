@@ -1,4 +1,4 @@
-// Voice Input & Whisper Speech-to-Text Handling
+// Voice Input & Whisper Speech-to-Text State Machine Handling
 
 let mediaRecorder = null;
 let audioChunks = [];
@@ -6,7 +6,52 @@ let isRecording = false;
 let recordedMimeType = "audio/webm";
 let fileExtension = "webm";
 
-// Detect best supported MIME type for the browser
+// Helper to set Voice UI state cleanly
+function setVoiceUIState(state, message = "", errorMsg = "") {
+    const recordBtn = document.getElementById("recordVoiceBtn");
+    const statusText = document.getElementById("voiceStatusText");
+
+    if (!recordBtn) return;
+
+    switch (state) {
+        case "idle":
+            recordBtn.disabled = false;
+            recordBtn.innerText = "🎙️ Record Voice";
+            recordBtn.className = "btn btn-primary btn-sm";
+            if (statusText && message) statusText.innerText = message;
+            break;
+
+        case "recording":
+            recordBtn.disabled = false;
+            recordBtn.innerText = "🔴 Stop Recording";
+            recordBtn.className = "btn btn-danger btn-sm";
+            if (statusText) statusText.innerText = message || "🔴 Recording your symptoms... Speak clearly in your selected language.";
+            break;
+
+        case "processing":
+            recordBtn.disabled = true;
+            recordBtn.innerText = "⏳ Transcribing...";
+            recordBtn.className = "btn btn-primary btn-sm";
+            if (statusText) statusText.innerText = "⏳ Transcribing speech with OpenAI Whisper...";
+            break;
+
+        case "success":
+            recordBtn.disabled = false;
+            recordBtn.innerText = "🎙️ Record Again";
+            recordBtn.className = "btn btn-primary btn-sm";
+            if (statusText) statusText.innerText = message || "✓ Transcription complete. Please review and edit your symptoms below before proceeding.";
+            break;
+
+        case "error":
+            recordBtn.disabled = false;
+            recordBtn.innerText = "🎙️ Try Again";
+            recordBtn.className = "btn btn-primary btn-sm";
+            if (statusText) statusText.innerText = errorMsg || "⚠️ Unable to transcribe audio. Please try again or enter symptoms using text.";
+            break;
+    }
+}
+
+// Detect best supported MIME type for browser
 function getSupportedMimeType() {
     if (typeof MediaRecorder === "undefined") {
         return null;
@@ -27,17 +72,13 @@ function getSupportedMimeType() {
 }
 
 async function toggleVoiceRecording(lang = "en") {
-    const recordBtn = document.getElementById("recordVoiceBtn");
-    const statusText = document.getElementById("voiceStatusText");
     const symptomArea = document.getElementById("symptom_text");
 
     if (!isRecording) {
         // 1. Check browser support
         const supported = getSupportedMimeType();
         if (!supported) {
-            if (statusText) {
-                statusText.innerText = "Voice recording is not supported in this browser. Please use a modern browser or enter symptoms using text.";
-            }
+            setVoiceUIState("error", "", "Voice recording is not supported in this browser. Please use a modern browser or enter symptoms using text.");
             return;
         }
         recordedMimeType = supported.mime;
@@ -59,14 +100,13 @@ async function toggleVoiceRecording(lang = "en") {
             mediaRecorder.onstop = async () => {
                 const blobType = recordedMimeType || "audio/wav";
                 const audioBlob = new Blob(audioChunks, { type: blobType });
-                
-                if (statusText) {
-                    statusText.innerText = "⏳ Transcribing speech with OpenAI Whisper...";
+
+                if (!audioBlob || audioBlob.size === 0) {
+                    setVoiceUIState("error", "", "⚠️ Recording failed. No audio was captured. Please check your microphone and try again.");
+                    return;
                 }
-                if (recordBtn) {
-                    recordBtn.disabled = true;
-                    recordBtn.innerText = "⏳ Processing...";
-                }
+
+                setVoiceUIState("processing");
 
                 const formData = new FormData();
                 const filename = `voice_symptoms.${fileExtension}`;
@@ -86,54 +126,29 @@ async function toggleVoiceRecording(lang = "en") {
                             symptomArea.value = transcript;
                             symptomArea.focus();
                         }
-                        if (statusText) {
-                            statusText.innerText = "✓ Voice transcription complete. Please review and edit your symptoms below before proceeding.";
-                        }
+                        setVoiceUIState("success", "✓ Transcription complete. Please review and edit your symptoms below before proceeding.");
                     } else {
                         const errMsg = data.error || "Unable to transcribe audio. Please try again or enter symptoms using text.";
-                        if (statusText) {
-                            statusText.innerText = "⚠️ " + errMsg;
-                        }
+                        setVoiceUIState("error", "", "⚠️ " + errMsg);
                     }
                 } catch (err) {
                     console.error("Transcription network error:", err);
-                    if (statusText) {
-                        statusText.innerText = "⚠️ Audio transcription service is currently unavailable. Please enter symptoms using text.";
-                    }
-                } finally {
-                    if (recordBtn) {
-                        recordBtn.disabled = false;
-                        recordBtn.innerText = "🎙️ Record Again";
-                        recordBtn.classList.remove("btn-danger");
-                        recordBtn.classList.add("btn-primary");
-                    }
+                    setVoiceUIState("error", "", "⚠️ Audio transcription service is currently unavailable. Please enter symptoms using text.");
                 }
             };
 
             mediaRecorder.start();
             isRecording = true;
-            if (recordBtn) {
-                recordBtn.innerText = "🔴 Stop Recording";
-                recordBtn.classList.add("btn-danger");
-                recordBtn.classList.remove("btn-primary");
-            }
-            if (statusText) {
-                statusText.innerText = "🔴 Recording your symptoms... Speak clearly in your selected language.";
-            }
+            setVoiceUIState("recording");
         } catch (err) {
             console.error("Microphone access error:", err);
+            isRecording = false;
             if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-                if (statusText) {
-                    statusText.innerText = "Microphone permission was denied. Please allow microphone access in your browser settings and try again.";
-                }
+                setVoiceUIState("error", "", "⚠️ Microphone permission was denied. Please allow microphone access in your browser settings and try again.");
             } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
-                if (statusText) {
-                    statusText.innerText = "Microphone is unavailable. Please check your microphone connection.";
-                }
+                setVoiceUIState("error", "", "⚠️ Microphone is unavailable. Please check your microphone connection.");
             } else {
-                if (statusText) {
-                    statusText.innerText = "Microphone access error. Please check your browser audio settings or type your symptoms.";
-                }
+                setVoiceUIState("error", "", "⚠️ Microphone access error. Please check your browser audio settings or type your symptoms.");
             }
         }
     } else {
@@ -147,4 +162,5 @@ async function toggleVoiceRecording(lang = "en") {
         isRecording = false;
     }
 }
+
 

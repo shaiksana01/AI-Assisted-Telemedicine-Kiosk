@@ -1,12 +1,22 @@
-"""
-Speech REST API endpoints (Whisper STT & OpenAI TTS) with fallback support.
-"""
-
+import os
 from flask import Blueprint, request, jsonify, make_response
 from backend.speech.whisper_service import transcribe_audio
 from backend.speech.tts_service import synthesize_speech
 
 speech_bp = Blueprint("speech_bp", __name__, url_prefix="/api/speech")
+
+@speech_bp.route("/status", methods=["GET"])
+def speech_status():
+    configured = bool(os.getenv("OPENAI_API_KEY", "").strip())
+    return jsonify({
+        "success": True,
+        "configured": configured,
+        "stt_configured": configured,
+        "tts_configured": configured,
+        "stt_model": "whisper-1",
+        "tts_model": "tts-1"
+    })
+
 
 @speech_bp.route("/transcribe", methods=["POST"])
 def transcribe():

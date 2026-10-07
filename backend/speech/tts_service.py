@@ -9,8 +9,14 @@ import hashlib
 import logging
 from typing import Optional, Tuple
 from dotenv import load_dotenv
+# Ensure .env is loaded from project root
+_project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_env_path = os.path.join(_project_root, ".env")
+if os.path.exists(_env_path):
+    load_dotenv(dotenv_path=_env_path)
+else:
+    load_dotenv()
 
-load_dotenv()
 logger = logging.getLogger(__name__)
 
 CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "assets", "audio_cache")

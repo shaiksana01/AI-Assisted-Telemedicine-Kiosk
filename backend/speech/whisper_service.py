@@ -9,8 +9,16 @@ import logging
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv
 
-load_dotenv()
+# Ensure .env is loaded from project root
+_project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_env_path = os.path.join(_project_root, ".env")
+if os.path.exists(_env_path):
+    load_dotenv(dotenv_path=_env_path)
+else:
+    load_dotenv()
+
 logger = logging.getLogger(__name__)
+
 
 def transcribe_audio(audio_bytes: bytes, filename: str = "audio.webm", language: Optional[str] = None) -> Dict[str, Any]:
     """
