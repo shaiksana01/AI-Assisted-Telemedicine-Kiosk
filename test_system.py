@@ -13,6 +13,7 @@ Runs full tests across:
 import os
 import sys
 import time
+import random
 
 # Ensure project root is in sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -57,7 +58,7 @@ def test_flask_web_pages():
     assert client.get("/help").status_code == 200
 
     # 2. Patient Registration via HTML form
-    test_phone = f"987{int(time.time() + 60) % 10000000:07d}"
+    test_phone = f"987{random.randint(1000000, 9999999)}"
     res_reg = client.post("/patient/register", data={
         "full_name": "Web Test Patient",
         "age": "29",
@@ -69,13 +70,33 @@ def test_flask_web_pages():
     }, follow_redirects=True)
     assert res_reg.status_code == 200
     assert b"Web Test Patient" in res_reg.data
+    assert "Kannada".encode("utf-8") in res_reg.data
+
+    # Test Language Selection Persistence on Login (Kannada)
+    client.post("/set-language", data={"language": "Kannada"}, follow_redirects=True)
+    res_login_kn = client.post("/patient/login", data={
+        "phone_number": test_phone,
+        "password": "webpass123"
+    }, follow_redirects=True)
+    assert res_login_kn.status_code == 200
+    assert "Kannada".encode("utf-8") in res_login_kn.data
+    assert "ರೋಗಿ".encode("utf-8") in res_login_kn.data or "ಮುಖಪುಟ".encode("utf-8") in res_login_kn.data
+
+    # Test Language Selection Persistence on Login (Telugu)
+    client.post("/set-language", data={"language": "Telugu"}, follow_redirects=True)
+    res_login_te = client.post("/patient/login", data={
+        "phone_number": test_phone,
+        "password": "webpass123"
+    }, follow_redirects=True)
+    assert res_login_te.status_code == 200
+    assert "Telugu".encode("utf-8") in res_login_te.data
 
     # 3. Symptom entry & Random Forest Triage
     res_sym = client.post("/symptoms", data={
         "symptom_text": "Severe fever and body pain for two days"
     }, follow_redirects=True)
     assert res_sym.status_code == 200
-    assert b"Preliminary AI Triage Result" in res_sym.data
+    assert b"Preliminary AI Triage Result" in res_sym.data or "ಪ್ರಾಥಮಿಕ".encode("utf-8") in res_sym.data or "ప్రాథమిక".encode("utf-8") in res_sym.data
 
     # 4. Doctor Login & Dashboard
     res_doc_login = client.post("/doctor/login", data={
@@ -85,6 +106,7 @@ def test_flask_web_pages():
     assert res_doc_login.status_code == 200
     assert b"Doctor Dashboard" in res_doc_login.data or b"doctor" in res_doc_login.data.lower()
     print("✅ All Flask HTML web pages & workflows verified!\n")
+
 
 def run_all_tests():
     print("==================================================")

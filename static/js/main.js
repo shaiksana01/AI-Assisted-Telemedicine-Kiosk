@@ -1,6 +1,21 @@
 // Main Interactive JS for AI-Assisted Telemedicine Kiosk
 
 document.addEventListener("DOMContentLoaded", () => {
+    // Language dropdown synchronization & persistence
+    const langSelect = document.querySelector('select[name="language"]');
+    if (langSelect) {
+        // Save on change
+        langSelect.addEventListener("change", (e) => {
+            if (e.target.value) {
+                try {
+                    localStorage.setItem("kiosk_preferred_language", e.target.value);
+                } catch (err) {
+                    console.log("LocalStorage not available:", err);
+                }
+            }
+        });
+    }
+
     // Tabs Functionality
     const tabBtns = document.querySelectorAll(".tab-btn");
     tabBtns.forEach(btn => {
@@ -37,11 +52,11 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-// TTS Voice Synthesis Playback
+// TTS Voice Synthesis Playback with Multi-Language Support
 async function playTTS(text, lang = "en") {
     if (!text || text.trim() === "") return;
     try {
-        const res = await fetch("/api/speech/synthesize", {
+        const res = await fetch("/api/speech/tts", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ text: text, language: lang })
@@ -50,7 +65,9 @@ async function playTTS(text, lang = "en") {
             const blob = await res.blob();
             const audioUrl = URL.createObjectURL(blob);
             const audio = new Audio(audioUrl);
-            audio.play();
+            audio.play().catch(err => {
+                console.log("Autoplay prevented or audio playback issue:", err);
+            });
         } else {
             console.log("TTS audio synthesis unavailable, text display active.");
         }
@@ -58,3 +75,4 @@ async function playTTS(text, lang = "en") {
         console.error("TTS playback error:", e);
     }
 }
+

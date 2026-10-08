@@ -133,5 +133,6 @@
   "ehr_past_consultations": "परामर्श और पर्चे का इतिहास",
   "ehr_no_records": "इस मरीज आईडी के लिए कोई पूर्व रिकॉर्ड नहीं मिला।",
   "btn_back_home": "मुख्य पृष्ठ पर वापस जाएं",
-  "btn_back_dashboard": "डॉक्टर डैशबोर्ड पर वापस जाएं"
+  "btn_back_dashboard": "डॉक्टर डैशबोर्ड पर वापस जाएं",
+  "btn_read_aloud": "परिणाम सुनें (TTS)"
 }

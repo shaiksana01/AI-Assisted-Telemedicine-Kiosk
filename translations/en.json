@@ -133,5 +133,6 @@
   "ehr_past_consultations": "Consultation & Prescription History",
   "ehr_no_records": "No previous health records found for this patient ID.",
   "btn_back_home": "Back to Home",
-  "btn_back_dashboard": "Back to Doctor Dashboard"
+  "btn_back_dashboard": "Back to Doctor Dashboard",
+  "btn_read_aloud": "Read Out Result (TTS)"
 }

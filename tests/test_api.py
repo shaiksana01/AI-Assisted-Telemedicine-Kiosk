@@ -4,6 +4,7 @@ Integration Tests for Flask REST API Endpoints.
 
 import json
 import time
+import random
 from backend.app import create_app
 
 def test_flask_endpoints():
@@ -16,7 +17,8 @@ def test_flask_endpoints():
     assert res_health.json["status"] == "healthy"
 
     # 2. Patient registration via API
-    test_phone = f"987{int(time.time() + 20) % 10000000:07d}"
+    test_phone = f"987{random.randint(1000000, 9999999)}"
+
     res_reg = client.post("/api/auth/patient/register", json={
         "full_name": "API Test Patient",
         "age": 34,

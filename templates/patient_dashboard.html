@@ -1,21 +1,21 @@
 {% extends "base.html" %}
 
-{% block title %}Patient Dashboard - AI-Assisted Telemedicine Kiosk{% endblock %}
+{% block title %}{{ get_text('auth_patient_title', current_lang) }} - AI-Assisted Telemedicine Kiosk{% endblock %}
 
 {% block content %}
 <div class="card" style="margin-bottom: 24px;">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
         <div>
-            <h2 class="hero-title" style="font-size: 1.6rem;">Welcome, {{ patient.full_name }}</h2>
+            <h2 class="hero-title" style="font-size: 1.6rem;">{{ get_text('msg_login_success', current_lang) }} {{ patient.full_name }}</h2>
             <div style="color: #64748b; font-size: 0.92rem; margin-top: 4px;">
-                <strong>Patient ID:</strong> <code>{{ patient.patient_id }}</code> &nbsp;|&nbsp; 
-                <strong>Age/Gender:</strong> {{ patient.age }} Y / {{ patient.gender }} &nbsp;|&nbsp; 
-                <strong>Language:</strong> {{ patient.preferred_language }}
+                <strong>{{ get_text('lbl_patient_id', current_lang) }}:</strong> <code>{{ patient.patient_id }}</code> &nbsp;|&nbsp; 
+                <strong>{{ get_text('lbl_age', current_lang) }}/{{ get_text('lbl_gender', current_lang) }}:</strong> {{ patient.age }} Y / {{ patient.gender }} &nbsp;|&nbsp; 
+                <strong>{{ get_text('lbl_pref_lang', current_lang) }}:</strong> <span class="badge badge-info">{{ current_lang }}</span>
             </div>
         </div>
         <div>
             <a href="{{ url_for('symptoms') }}" class="btn btn-primary" style="width: auto;">
-                🩺 Start Consultation
+                🩺 {{ get_text('card_patient_btn', current_lang) }}
             </a>
         </div>
     </div>
@@ -23,23 +23,24 @@
 
 <div class="choice-grid">
     <div class="card">
-        <h3 class="choice-card-title">Describe Symptoms & AI Triage</h3>
+        <h3 class="choice-card-title">{{ get_text('symptom_title', current_lang) }}</h3>
         <p class="choice-card-desc" style="margin: 8px 0 16px 0;">
-            Enter your symptoms using keyboard typing or voice recording in your regional language.
+            {{ get_text('symptom_desc', current_lang) }}
         </p>
         <a href="{{ url_for('symptoms') }}" class="btn btn-primary">
-            Describe Symptoms →
+            {{ get_text('card_patient_btn', current_lang) }}
         </a>
     </div>
 
     <div class="card">
-        <h3 class="choice-card-title">Electronic Health Record (EHR)</h3>
+        <h3 class="choice-card-title">{{ get_text('ehr_title', current_lang) }}</h3>
         <p class="choice-card-desc" style="margin: 8px 0 16px 0;">
-            View your complete history of past consultations, preliminary triage results, and digital prescriptions.
+            {{ get_text('ehr_past_consultations', current_lang) }}
         </p>
         <a href="{{ url_for('health_record', patient_id=patient.patient_id) }}" class="btn btn-secondary">
-            View My Health Records →
+            {{ get_text('nav_ehr', current_lang) }} →
         </a>
     </div>
 </div>
 {% endblock %}
+

@@ -39,7 +39,7 @@ from ml.predict import (
     SYMPTOM_DISPLAY_NAMES,
     SYMPTOM_COLUMNS
 )
-from utils.translations import get_text, get_available_languages, get_language_code
+from utils.translations import get_text, get_available_languages, get_language_code, get_language_name
 from backend.services.ehr_service import get_complete_patient_history
 from backend.services.prescription_service import generate_prescription_html
 
@@ -84,7 +84,7 @@ def api_health():
 # Context processor for templates
 @app.context_processor
 def inject_global_template_vars():
-    current_lang = session.get("language", "English")
+    current_lang = get_language_name(session.get("language", "English"))
     return {
         "current_lang": current_lang,
         "lang_code": get_language_code(current_lang),
@@ -104,8 +104,14 @@ def index():
 @app.route("/set-language", methods=["POST"])
 def set_language():
     lang = request.form.get("language", "English")
-    if lang in get_available_languages():
-        session["language"] = lang
+    canonical_lang = get_language_name(lang)
+    session["language"] = canonical_lang
+    
+    # If patient is currently logged in, sync with database
+    pid = session.get("patient_id")
+    if pid:
+        db.update_patient_preferred_language(pid, canonical_lang)
+        
     return redirect(request.referrer or url_for("index"))
 
 @app.route("/about")
@@ -118,7 +124,9 @@ def help_page():
 
 @app.route("/logout")
 def logout():
+    chosen_lang = session.get("language", "English")
     session.clear()
+    session["language"] = chosen_lang  # preserve regional language choice for next user on kiosk
     flash("You have been logged out successfully.", "info")
     return redirect(url_for("index"))
 
@@ -135,7 +143,18 @@ def patient_login():
         if patient:
             session["patient_id"] = patient["patient_id"]
             session["patient_name"] = patient["full_name"]
-            session["language"] = patient.get("preferred_language", session.get("language", "English"))
+            
+            # Prioritize current session language if patient selected a language on kiosk (e.g. Kannada),
+            # and update database record so patient's preference matches selection
+            session_lang = session.get("language")
+            if session_lang:
+                active_lang = get_language_name(session_lang)
+                session["language"] = active_lang
+                db.update_patient_preferred_language(patient["patient_id"], active_lang)
+            else:
+                db_lang = get_language_name(patient.get("preferred_language", "English"))
+                session["language"] = db_lang
+
             flash(f"Welcome back, {patient['full_name']}!", "success")
             return redirect(url_for("patient_dashboard"))
         else:
@@ -150,7 +169,8 @@ def patient_register():
         gender = request.form.get("gender", "Male")
         phone = request.form.get("phone_number", "").strip()
         location = request.form.get("location", "").strip()
-        lang = request.form.get("preferred_language", "English")
+        form_lang = request.form.get("preferred_language")
+        lang = get_language_name(form_lang if form_lang else session.get("language", "English"))
         pwd = request.form.get("password", "")
 
         if not name or not phone:
@@ -165,7 +185,6 @@ def patient_register():
                 location=location,
                 password=pwd
             )
-            patient = db.get_patient_by_id(pid)
             session["patient_id"] = pid
             session["patient_name"] = name
             session["language"] = lang
@@ -181,7 +200,16 @@ def patient_dashboard():
         flash("Please log in to access your patient dashboard.", "error")
         return redirect(url_for("patient_login"))
     patient = db.get_patient_by_id(pid)
+    if not patient:
+        session.clear()
+        return redirect(url_for("patient_login"))
+        
+    active_lang = get_language_name(session.get("language") or patient.get("preferred_language", "English"))
+    session["language"] = active_lang
+    patient["preferred_language"] = active_lang
+    
     return render_template("patient_dashboard.html", patient=patient, active_page="patient_dashboard")
+
 
 @app.route("/symptoms", methods=["GET", "POST"])
 def symptoms():

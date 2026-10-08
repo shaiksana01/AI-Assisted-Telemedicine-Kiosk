@@ -307,6 +307,21 @@ def get_patient_by_id(patient_id: str) -> Optional[Dict[str, Any]]:
     conn.close()
     return dict(row) if row else None
 
+def update_patient_preferred_language(patient_id: str, preferred_language: str) -> bool:
+    """Update patient preferred language in database."""
+    init_db()
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE patients 
+        SET preferred_language = ?
+        WHERE patient_id = ?
+    """, (preferred_language.strip(), patient_id.strip()))
+    conn.commit()
+    conn.close()
+    return True
+
+
 # ------------------------------------------------------------------------------
 # DOCTOR AUTHENTICATION & MANAGEMENT
 # ------------------------------------------------------------------------------

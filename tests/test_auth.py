@@ -3,6 +3,7 @@ Unit Tests for Authentication and Role-Based Security.
 """
 
 import time
+import random
 import database.database as db
 from backend.auth.auth_service import hash_password, verify_password, validate_phone_number
 
@@ -22,7 +23,8 @@ def test_phone_validation():
     assert validate_phone_number("abcdefghij") is False
 
 def test_patient_registration_and_login():
-    test_phone = f"987{int(time.time()) % 10000000:07d}"
+    test_phone = f"987{random.randint(1000000, 9999999)}"
+
     pid = db.register_patient_account(
         full_name="Meena Kumari",
         age=28,
@@ -39,10 +41,17 @@ def test_patient_registration_and_login():
     assert auth_patient is not None
     assert auth_patient["patient_id"] == pid
     assert auth_patient["full_name"] == "Meena Kumari"
+    assert auth_patient["preferred_language"] == "Hindi"
+
+    # Test language update & persistence
+    db.update_patient_preferred_language(pid, "Kannada")
+    updated_patient = db.get_patient_by_id(pid)
+    assert updated_patient["preferred_language"] == "Kannada"
 
     # Invalid login
     invalid = db.authenticate_patient(test_phone, "wrongpass")
     assert invalid is None
+
 
 def test_doctor_registration_and_login():
     test_email = f"doc_{int(time.time())}@hospital.in"

@@ -35,70 +35,87 @@ SYMPTOM_COLUMNS = [
 SYMPTOM_KEYWORDS = {
     "high_fever": [
         "high fever", "burning fever", "102", "103", "104", "tez bukhar", "bada bukhar", 
-        "teevra jwara", "atheevra jwara", "theevra jwaram", "high temperature"
+        "teevra jwara", "atheevra jwara", "theevra jwaram", "high temperature",
+        "ತೀವ್ರ ಜ್ವರ", "ಹೆಚ್ಚಿನ ಜ್ವರ", "తీవ్ర జ్వరం", "ఎక్కువ జ్వరం", "तेज बुखार", "भारी बुखार"
     ],
     "fever": [
         "fever", "temperature", "chills", "shivering", "bukhar", "tapam", "taap", 
-        "jwara", "jvara", "jwaram", "feverish"
+        "jwara", "jvara", "jwaram", "feverish",
+        "ಜ್ವರ", "ಜ್ವರವಿದೆ", "ಜ్వర", "జ్వరం", "జ్వరంగా", "బుఖార్", "बुखार", "ताप"
     ],
     "cough": [
         "cough", "coughing", "khasi", "khansi", "kemmu", "khemmu", "daggu", "daggutundi", 
-        "dry cough", "wet cough", "phlegm"
+        "dry cough", "wet cough", "phlegm",
+        "ಕೆಮ್ಮು", "ಕೆಮ್ಮಿದೆ", "ಖಾಸಿ", "దగ్గు", "దగ్గుతుంది", "దగ్గుగా", "खांसी", "खाँसी"
     ],
     "cold": [
         "cold", "runny nose", "running nose", "blocked nose", "sneezing", "sardi", 
-        "jukaam", "nazla", "sheetala", "jaladosha", "jalubu", "nasal congestion"
+        "jukaam", "nazla", "sheetala", "jaladosha", "jalubu", "nasal congestion",
+        "ಶೀತ", "ನೆಗಡಿ", "ಜಲದೋಷ", "జలుబు", "ముక్కు కారడం", "సర్ది", "सर्दी", "जुकाम", "नजला"
     ],
     "headache": [
         "headache", "head pain", "migraine", "sar dard", "sar me dard", "shirovyathe", 
-        "talenoavu", "tale novu", "thala noppi", "tala noppi", "head throbbing"
+        "talenoavu", "tale novu", "thala noppi", "tala noppi", "head throbbing",
+        "ತಲೆನೋವು", "ತಲೆ ನೋವು", "ತಲೆನೋವಿದೆ", "తలనొప్పి", "తల నొప్పి", "తల పోటు", "सिरदर्द", "सर दर्द", "सिर में दर्द"
     ],
     "body_pain": [
         "body pain", "body ache", "muscle pain", "joint pain", "badan dard", "jism dard", 
-        "mai noavu", "mai kaim noavu", "ollu noppulu", "mey noppi", "bodyaches", "myalgia"
+        "mai noavu", "mai kaim noavu", "ollu noppulu", "mey noppi", "bodyaches", "myalgia",
+        "ಮೈಕೈ ನೋವು", "ಮೈ ನೋವು", "ದೇಹದ ನೋವು", "ఒళ్లు నొప్పులు", "శరీర నొప్పులు", "నొప్పులు", "बदन दर्द", "शरीर में दर्द", "अंग दर्द"
     ],
     "fatigue": [
         "fatigue", "weakness", "weak", "exhausted", "exhaustion", "lethargy", "kamzori", 
-        "thakan", "alasate", "neersam", "neerasam", "alasata", "tired"
+        "thakan", "alasate", "neersam", "neerasam", "alasata", "tired",
+        "ನಿಶ್ಯಕ್ತಿ", "ಆಯಾಸ", "ಸುಸ್ತು", "అలసట", "నీరసం", "బలహీనత", "थकान", "कमजोरी", "सुस्ती"
     ],
     "sore_throat": [
         "sore throat", "throat pain", "throat irritation", "difficulty swallowing", 
-        "gale me dard", "gala kharab", "gantu novu", "gonthu noppi", "throat infection"
+        "gale me dard", "gala kharab", "gantu novu", "gonthu noppi", "throat infection",
+        "ಗಂಟಲು ನೋವು", "ಗಂಟಲು ಉರಿ", "గొంతు నొప్పి", "గొంతు మంట", "गले में खराश", "गले में दर्द", "गला खराब"
     ],
     "vomiting": [
         "vomiting", "vomit", "nausea", "throwing up", "puking", "ulti", "oekathisu", 
-        "vanthi", "vaanti", "vomitting"
+        "vanthi", "vaanti", "vomitting",
+        "ವಾಂತಿ", "ವಾಂತಿಯಾಗುತ್ತಿದೆ", "వాంతి", "వాంతులు", "వికారం", "उल्टी", "मतली", "कै"
     ],
     "diarrhea": [
         "diarrhea", "loose motion", "loose motions", "stomach upset", "watery stool", 
-        "dast", "pet kharab", "bedi", "jhedalu", "motions"
+        "dast", "pet kharab", "bedi", "jhedalu", "motions",
+        "ಭೇದಿ", "ಹೊಟ್ಟೆ ಸರಿ ಇಲ್ಲ", "విరేచనాలు", "మోషన్స్", "కడుపు బాగోలేదు", "दस्त", "लूज मोशन", "पेट खराब"
     ],
     "abdominal_pain": [
         "stomach pain", "abdominal pain", "belly pain", "stomach ache", "cramp", 
-        "pet dard", "potte novu", "hotte novu", "kadupu noppi", "gastric pain"
+        "pet dard", "potte novu", "hotte novu", "kadupu noppi", "gastric pain",
+        "ಹೊಟ್ಟೆ ನೋವು", "ಹೊಟ್ಟೆನೋವು", "ಹೊಟ್ಟೆ ಶೂಲೆ", "కడుపు నొప్పి", "కడుపునొప్పి", "పొట్ట నొప్పి", "पेट दर्द", "पेट में दर्द", "मरोड़"
     ],
     "dizziness": [
         "dizziness", "dizzy", "vertigo", "giddiness", "lightheaded", "chakkar", 
-        "sar ghoomna", "thale suthu", "thala thirugudu", "talatippadam"
+        "sar ghoomna", "thale suthu", "thala thirugudu", "talatippadam",
+        "ತಲೆಸುತ್ತು", "ತಲೆ ತಿರುಗುವುದು", "కళ్ళు తిరగడం", "తల తిరగడం", "చక్కర్", "चक्कर", "सिर घूमना"
     ],
     "chest_pain": [
         "chest pain", "chest tightness", "heart pain", "angina", "chest pressure", 
-        "chhati dard", "seene me dard", "edeya novu", "gunde noppi", "chaathi noppi"
+        "chhati dard", "seene me dard", "edeya novu", "gunde noppi", "chaathi noppi",
+        "ಎದೆ ನೋವು", "ಎದೆನೋವು", "ಹೃದಯ ನೋವು", "ఛాతీ నొప్పి", "గుండె నొప్పి", "ఛాతీలో నొప్పి", "छाती में दर्द", "सीने में दर्द"
     ],
     "breathing_difficulty": [
         "breathing difficulty", "shortness of breath", "breathless", "breathlessness", 
         "asthma", "wheezing", "saans lene me dikkat", "saans phoolna", "usirata samasye", 
-        "oopiri aadtledu", "oopiri aadaka", "struggling to breathe"
+        "oopiri aadtledu", "oopiri aadaka", "struggling to breathe",
+        "ಉಸಿರಾಟದ ತೊಂದರೆ", "ಉಸಿರಾಟ", "ದಮ್ಮು", "శ్వాస తీసుకోవడంలో ఇబ్బంది", "శ్వాస ఆడకపోవడం", "ఆయాసం", "सांस लेने में तकलीफ", "सांस फूलना", "दम फूलना"
     ],
     "loss_of_consciousness": [
         "unconscious", "blackout", "collapsed", "passed out", "fainted", "fainting", 
-        "behosh", "behoshi", "spruhe thappu", "telivi thappadam", "loss of consciousness"
+        "behosh", "behoshi", "spruhe thappu", "telivi thappadam", "loss of consciousness",
+        "ಪ್ರಜ್ಞೆ ತಪ್ಪುವುದು", "ಪ್ರಜ್ಞೆ ತಪ್ಪಿದೆ", "ಮೂರ್ಛೆ", "స్పృహ తప్పడం", "కళ్ళు తిరిగి పడిపోవడం", "మూర్ఛ", "बेहोशी", "बेहोश", "मूर्छा"
     ],
     "severe_bleeding": [
         "severe bleeding", "heavy bleeding", "blood loss", "profuse bleeding", 
-        "khoon bahna", "raktha srava", "rakta", "nethuru karadam", "haemorrhage"
+        "khoon bahna", "raktha srava", "rakta", "nethuru karadam", "haemorrhage",
+        "ತೀವ್ರ ರಕ್ತಸ್ರಾವ", "ರಕ್ತಸ್ರಾವ", "ರಕ್ತ ಬರುತ್ತಿದೆ", "తీవ్ర రక్తస్రావం", "రక్తస్రావం", "రక్తం కారడం", "भारी रक्तस्राव", "खून बहना", "रक्तस्राव"
     ]
 }
+
 
 # Human friendly display labels
 SYMPTOM_DISPLAY_NAMES = {
@@ -139,9 +156,11 @@ def load_triage_model():
 def extract_symptoms_from_text(text: str) -> Tuple[Dict[str, int], List[str]]:
     """
     Parse free-text symptom description and map to binary feature representation.
+    Supports English and native Indic scripts (Kannada, Telugu, Hindi).
     Returns: (features_dict, list_of_detected_symptom_keys)
     """
-    normalized_text = " " + re.sub(r"[^\w\s]", " ", text.lower()) + " "
+    # Clean standard punctuation without stripping Unicode combining characters/matras
+    normalized_text = " " + re.sub(r"[,.!?;\n\r\t\(\)\[\]\{\}\"\'\:\-]", " ", text.lower()) + " "
     features = {col: 0 for col in SYMPTOM_COLUMNS}
     detected_keys = []
 
@@ -157,15 +176,15 @@ def extract_symptoms_from_text(text: str) -> Tuple[Dict[str, int], List[str]]:
         if symptom == "high_fever":
             continue
         for kw in keywords:
-            # Word boundary matching or phrase containment
-            pattern = r"\b" + re.escape(kw) + r"\b"
-            if re.search(pattern, normalized_text):
+            # Check if keyword is in normalized text
+            if kw in normalized_text:
                 features[symptom] = 1
                 if symptom not in detected_keys:
                     detected_keys.append(symptom)
                 break
 
     return features, detected_keys
+
 
 def predict_triage_priority(symptom_text: str, additional_selected_symptoms: List[str] = None) -> Dict[str, Any]:
     """

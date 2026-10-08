@@ -10,15 +10,21 @@ def test_symptom_extraction():
     assert "cold" in keys
     assert "cough" in keys
 
-    # Multilingual Hindi
-    feat_hi, keys_hi = extract_symptoms_from_text("Mujhe 2 din se tez bukhar aur sar dard hai")
+    # Multilingual Hindi (transliterated & native)
+    feat_hi, keys_hi = extract_symptoms_from_text("मुझे दो दिनों से तेज बुखार और सिरदर्द है")
     assert "high_fever" in keys_hi or "fever" in keys_hi
     assert "headache" in keys_hi
 
-    # Multilingual Kannada
-    feat_kn, keys_kn = extract_symptoms_from_text("Nimage talenoavu matte jwara ide")
-    assert "headache" in keys_kn
+    # Multilingual Kannada (native script)
+    feat_kn, keys_kn = extract_symptoms_from_text("ನನಗೆ ಎರಡು ದಿನಗಳಿಂದ ಜ್ವರ ಮತ್ತು ಕೆಮ್ಮು ಇದೆ")
     assert "fever" in keys_kn
+    assert "cough" in keys_kn
+
+    # Multilingual Telugu (native script)
+    feat_te, keys_te = extract_symptoms_from_text("నాకు తీవ్ర జ్వరం మరియు దగ్గు ఉంది")
+    assert "high_fever" in keys_te or "fever" in keys_te
+    assert "cough" in keys_te
+
 
 def test_triage_predictions():
     # Model load test

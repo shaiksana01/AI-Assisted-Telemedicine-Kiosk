@@ -45,10 +45,12 @@
             </a>
         </div>
         <div>
-            <button type="button" class="btn btn-secondary" onclick="playTTS('Your preliminary triage urgency level is {{ triage.predicted_priority }}. An attending physician will examine your case in the waiting room shortly.', '{{ lang_code }}')">
-                🔊 Read Out Result (TTS)
+            {% set tts_readout = get_text('triage_priority_label', current_lang) ~ ' ' ~ triage.predicted_priority ~ '. ' ~ get_text('triage_disclaimer', current_lang) %}
+            <button type="button" class="btn btn-secondary" onclick="playTTS({{ tts_readout|tojson }}, '{{ lang_code }}')">
+                🔊 {{ get_text('btn_read_aloud', current_lang, 'Read Out Result (TTS)') }}
             </button>
         </div>
     </div>
 </div>
+
 {% endblock %}

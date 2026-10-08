@@ -39,20 +39,31 @@ def load_all_translations() -> Dict[str, Dict[str, str]]:
 
     return _loaded_translations
 
+def get_language_name(code_or_name: str) -> str:
+    """
+    Return canonical full language name (e.g., 'English', 'Hindi', 'Kannada', 'Telugu').
+    """
+    if not code_or_name:
+        return "English"
+    code = get_language_code(code_or_name)
+    reverse_map = {v: k for k, v in LANGUAGE_MAPPING.items()}
+    return reverse_map.get(code, "English")
+
 def get_text(key: str, language: str = "English", default: str = None) -> str:
     """
-    Get localized string for a given key and language.
+    Get localized string for a given key and language (accepts code or full name).
     Falls back to English if key is missing in target language, or default/key if not found.
     """
+    canonical_name = get_language_name(language)
     translations = load_all_translations()
-    lang_dict = translations.get(language, {})
+    lang_dict = translations.get(canonical_name, {})
     
-    if key in lang_dict:
+    if key in lang_dict and lang_dict[key]:
         return lang_dict[key]
     
     # Fallback to English
     en_dict = translations.get("English", {})
-    if key in en_dict:
+    if key in en_dict and en_dict[key]:
         return en_dict[key]
     
     return default if default is not None else key
@@ -103,6 +114,8 @@ __all__ = [
     "get_text",
     "get_available_languages",
     "get_language_code",
+    "get_language_name",
     "load_all_translations",
     "LANGUAGE_MAPPING"
 ]
+
